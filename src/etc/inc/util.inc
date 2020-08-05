@@ -45,9 +45,11 @@ function isvalidpid($pidfile) {
 
 function is_process_running($process) {
 	$output = "";
-	exec("/bin/pgrep -anx " . escapeshellarg($process), $output, $retval);
-
-	return (intval($retval) == 0);
+	if (!empty($process)) {
+		exec("/bin/pgrep -anx " . escapeshellarg($process), $output, $retval);
+		return (intval($retval) == 0);
+	}
+	return false;
 }
 
 function isvalidproc($proc) {
@@ -769,7 +771,7 @@ function is_ipaddroralias($ipaddr) {
 	false - if not a valid subnet
 	true (numeric 4 or 6) - if valid, gives type of subnet */
 function is_subnet($subnet) {
-	if (is_string($subnet) && preg_match('/^(?:([0-9.]{7,15})|([0-9a-f:]{2,39}))\/(\d{1,3})$/i', $subnet, $parts)) {
+	if (is_string($subnet) && preg_match('/^(?:([0-9.]{7,15})|([0-9a-f:]{2,39}|[0-9a-f:]{2,30}[0-9.]{7,15}))\/(\d{1,3})$/i', $subnet, $parts)) {
 		if (is_ipaddrv4($parts[1]) && $parts[3] <= 32) {
 			return 4;
 		}
@@ -1285,6 +1287,22 @@ function is_inrange($test, $start, $end) {
 	return is_ipaddrv6($test) ? is_inrange_v6($test, $start, $end) : is_inrange_v4($test, $start, $end);
 }
 
+function build_vip_list($fif, $family = "all") {
+	$list = array('address' => gettext('Interface Address'));
+
+	$viplist = get_configured_vip_list($family);
+	foreach ($viplist as $vip => $address) {
+		if ($fif == get_configured_vip_interface($vip)) {
+			$list[$vip] = "$address";
+			if (get_vip_descr($address)) {
+				$list[$vip] .= " (". get_vip_descr($address) .")";
+			}
+		}
+	}
+
+	return($list);
+}
+
 function get_configured_vip_list($family = 'all', $type = VIP_ALL) {
 	global $config;
 
@@ -1611,7 +1629,8 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = "")
 		if (!in_array(array_shift(preg_split('/\d/', $ifname)), $vfaces) &&
 		    interface_is_vlan($ifname) == NULL &&
 		    interface_is_qinq($ifname) == NULL &&
-		    !stristr($ifname, "_wlan")) {
+		    !stristr($ifname, "_wlan") &&
+		    !stristr($ifname, "_stf")) {
 			$toput = array(
 					"mac" => trim($alink[1]),
 					"up" => in_array($ifname, $upints)
