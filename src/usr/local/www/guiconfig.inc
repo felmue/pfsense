@@ -1071,7 +1071,7 @@ function alias_info_popup($alias_id) {
 		foreach ($alias_addresses as $ap) {
 			$content .= "	<tr>\n";
 			$content .= "		<td>\n";
-			$content .= 			idn_to_utf8($ap);
+			$content .= 			alias_idn_to_utf8($ap);
 			$content .=	"		</td>\n";
 			$content .= "		<td style='padding-left: 10px;'>\n";
 			$content .= 			htmlspecialchars($alias_details[$idx]);
@@ -1081,7 +1081,7 @@ function alias_info_popup($alias_id) {
 		}
 
 		$content .= "</tbody>\n";
-		$content .= "<table>\n";
+		$content .= "</table>\n";
 	}
 
 	return $content;
@@ -1113,7 +1113,7 @@ function gateway_info_popup($showgw) {
 			if ($gwgroup['name'] == $showgw) {
 				foreach ($gwgroup['item'] as $member) {
 					$membersplit = explode("|", $member);
-					$gateways[] = $membersplit[0];
+					$gws[] = $membersplit[0];
 				}
 			}
 		}
@@ -1155,7 +1155,7 @@ function gateway_info_popup($showgw) {
 			$idx++;
 		}
 		$content .= "</tbody>\n";
-		$content .= "<table>\n";
+		$content .= "</table>\n";
 	} else {
 		return;
 	}

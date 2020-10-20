@@ -60,7 +60,9 @@ if ($_POST) {
 		clear_subsystem_dirty('packagelock');
 		$savemsg = "Package lock cleared.";
 	} else {
-		$input_errors = execPost($_POST, $_FILES);
+		$execpost_return = execPost($_POST, $_FILES);
+		$input_errors = $execpost_return['input_errors'];
+		$savemsg = $execpost_return['savemsg'];
 	}
 
 }
@@ -169,6 +171,19 @@ $section->addInput(new Form_Checkbox(
 	'Do not backup RRD data (NOTE: RRD Data can consume 4+ megabytes of config.xml space!)',
 	true
 ));
+
+$section->addInput(new Form_Checkbox(
+	'backupdata',
+	'Include extra data',
+	'Backup extra data.',
+	true
+))->setHelp('Backup extra data files for some services.%1$s' .
+	    '%2$s%3$sCaptive Portal - Captive Portal DB and UsedMACs DB%4$s' .
+	    '%3$sCaptive Portal Vouchers - Used Vouchers DB%4$s' .
+	    '%3$sDHCP Server - DHCP leases DB%4$s' .
+	    '%3$sDHCPv6 Server - DHCPv6 leases DB%4$s%5$s',
+	    '<div class="infoblock">', '<ul>', '<li>', '</li>', '</ul></div>'
+);
 
 $section->addInput(new Form_Checkbox(
 	'encrypt',
@@ -314,7 +329,23 @@ events.push(function() {
 		} else {
 			$('.restore').prop('disabled', true);
 		}
-    });
+	});
+
+	$('#backuparea').change(function () {
+		if (document.getElementById("backuparea").value == 0) {
+			disableInput('donotbackuprrd', false);
+			disableInput('nopackages', false);
+			disableInput('backupdata', false);
+		} else {
+			disableInput('donotbackuprrd', true);
+			disableInput('nopackages', true);
+			disableInput('backupdata', true);
+			if (['captiveportal', 'dhcpd', 'dhcpdv6', 'voucher'].includes(document.getElementById("backuparea").value)) {
+				disableInput('backupdata', false);
+			}
+		}
+	});
+
 	// ---------- On initial page load ------------------------------------------------------------
 
 	hideSections();

@@ -116,6 +116,22 @@ function activate_sysctls() {
 		}
 	}
 
+	/* Set net.pf.request_maxcount via sysctl since it is no longer a loader
+	 *   tunable. See https://redmine.pfsense.org/issues/10861
+	 *   Set the value dynamically since its default is not static, yet this
+	 *   still could be overridden by a user tunable. */
+	if (isset($config['system']['maximumtableentries'])) {
+		$maximumtableentries = $config['system']['maximumtableentries'];
+	} else {
+		$maximumtableentries = pfsense_default_table_entries_size();
+	}
+	/* Set the default when there is no tunable or when the tunable is set
+	 * too low. */
+	if (empty($sysctls['net.pf.request_maxcount']) ||
+	    ($sysctls['net.pf.request_maxcount'] < $maximumtableentries)) {
+		$sysctls['net.pf.request_maxcount'] = $maximumtableentries;
+	}
+
 	set_sysctl($sysctls);
 }
 
@@ -129,7 +145,7 @@ function system_resolvconf_generate($dynupdate = false) {
 
 	$syscfg = $config['system'];
 
-	foreach(get_dns_nameservers() as $dns_ns) {
+	foreach(get_dns_nameservers(false, false) as $dns_ns) {
 		$resolvconf .= "nameserver $dns_ns\n";
 	}
 
@@ -238,12 +254,30 @@ function get_searchdomains() {
 	return $master_list;
 }
 
+/* Stub for deprecated function name
+ * See https://redmine.pfsense.org/issues/10931 */
 function get_nameservers() {
+	return get_dynamic_nameservers();
+}
+
+/****f* system.inc/get_dynamic_nameservers
+ * NAME
+ *   get_dynamic_nameservers - Get DNS servers from dynamic sources (DHCP, PPP, etc)
+ * INPUTS
+ *   $iface: Interface name used to filter results.
+ * RESULT
+ *   $master_list - Array containing DNS servers
+ ******/
+function get_dynamic_nameservers($iface = '') {
 	global $config, $g;
 	$master_list = array();
 
-	// Read in dhclient nameservers
-	$dns_lists = glob("/var/etc/nameserver_*");
+	if (!empty($iface)) {
+		$iface = get_real_interface($iface);
+	}
+
+	// Read in dynamic nameservers
+	$dns_lists = glob("/var/etc/nameserver_{$iface}*");
 	if (is_array($dns_lists)) {
 		foreach ($dns_lists as $fdns) {
 			$contents = file($fdns, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -251,18 +285,6 @@ function get_nameservers() {
 				continue;
 			}
 			foreach ($contents as $dns) {
-				if (is_ipaddr($dns)) {
-					$master_list[] = $dns;
-				}
-			}
-		}
-	}
-
-	// Read in any extra nameservers
-	if (file_exists("/var/etc/nameservers.conf")) {
-		$dns_s = file("/var/etc/nameservers.conf", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-		if (is_array($dns_s)) {
-			foreach ($dns_s as $dns) {
 				if (is_ipaddr($dns)) {
 					$master_list[] = $dns;
 				}
@@ -1131,7 +1153,22 @@ function system_webgui_start() {
 	return $res;
 }
 
-function get_dns_nameservers($add_v6_brackets = false) {
+/****f* system.inc/get_dns_nameservers
+ * NAME
+ *   get_dns_nameservers - Get system DNS servers
+ * INPUTS
+ *   $add_v6_brackets: (boolean, false)
+ *                     Add brackets around IPv6 DNS servers, as expected by some
+ *                     daemons such as nginx.
+ *   $hostns         : (boolean, true)
+ *                     true : Return only DNS servers used by the firewall
+ *                            itself as upstream forwarding servers
+ *                     false: Return all DNS servers from the configuration and
+ *                            overrides (if allowed).
+ * RESULT
+ *   $dns_nameservers - An array of the requested DNS servers
+ ******/
+function get_dns_nameservers($add_v6_brackets = false, $hostns=true) {
 	global $config;
 
 	$dns_nameservers = array();
@@ -1143,43 +1180,38 @@ function get_dns_nameservers($add_v6_brackets = false) {
 
 	$syscfg = $config['system'];
 	if ((((isset($config['dnsmasq']['enable'])) &&
-   		(empty($config['dnsmasq']['port']) || $config['dnsmasq']['port'] == "53") &&
-	      	(empty($config['dnsmasq']['interface']) ||
-	       	in_array("lo0", explode(",", $config['dnsmasq']['interface'])))) ||
-	     	((isset($config['unbound']['enable'])) &&
-	      	(empty($config['unbound']['port']) || $config['unbound']['port'] == "53") &&
-	      	(empty($config['unbound']['active_interface']) ||
-	       	in_array("lo0", explode(",", $config['unbound']['active_interface'])) ||
-	       	in_array("all", explode(",", $config['unbound']['active_interface']), true)))) &&
-	     	(!isset($config['system']['dnslocalhost']))) {
-			$dns_nameservers[] = "127.0.0.1";
+	    (empty($config['dnsmasq']['port']) || $config['dnsmasq']['port'] == "53") &&
+	    (empty($config['dnsmasq']['interface']) ||
+	    in_array("lo0", explode(",", $config['dnsmasq']['interface'])))) ||
+	    ((isset($config['unbound']['enable'])) &&
+	    (empty($config['unbound']['port']) || $config['unbound']['port'] == "53") &&
+	    (empty($config['unbound']['active_interface']) ||
+	    in_array("lo0", explode(",", $config['unbound']['active_interface'])) ||
+	    in_array("all", explode(",", $config['unbound']['active_interface']), true)))) &&
+	    ($config['system']['dnslocalhost'] != 'remote')) {
+		$dns_nameservers[] = "127.0.0.1";
 	}
-	/* get dynamically assigned DNS servers (if any) */
-	$ns = array_unique(get_nameservers());
-	if (isset($syscfg['dnsallowoverride'])) {
-		if(!is_array($ns)) {
-			$ns = array();
-		}
-		foreach ($ns as $nameserver) {
-			if ($nameserver) {
-				if ($add_v6_brackets && is_ipaddrv6($nameserver)) {
-					$nameserver = "[{$nameserver}]";
+
+	if ($hostns || ($config['system']['dnslocalhost'] != 'local')) {
+		if (isset($syscfg['dnsallowoverride'])) {
+			/* get dynamically assigned DNS servers (if any) */
+			foreach (array_unique(get_dynamic_nameservers()) as $nameserver) {
+				if ($nameserver) {
+					if ($add_v6_brackets && is_ipaddrv6($nameserver)) {
+						$nameserver = "[{$nameserver}]";
+					}
+					$dns_nameservers[] = $nameserver;
 				}
-				$dns_nameservers[] = $nameserver;
 			}
 		}
-	} else {
-		/* If override is disallowed, ignore the dynamic NS entries
-		 * https://redmine.pfsense.org/issues/9963 */
-		$ns = array();
-	}
-	if (is_array($syscfg['dnsserver'])) {
-		foreach ($syscfg['dnsserver'] as $sys_dnsserver) {
-			if ($sys_dnsserver && (!in_array($sys_dnsserver, $ns))) {
-				if ($add_v6_brackets && is_ipaddrv6($sys_dnsserver)) {
-					$sys_dnsserver = "[{$sys_dnsserver}]";
+		if (is_array($syscfg['dnsserver'])) {
+			foreach ($syscfg['dnsserver'] as $sys_dnsserver) {
+				if ($sys_dnsserver && (!in_array($sys_dnsserver, $dns_nameservers))) {
+					if ($add_v6_brackets && is_ipaddrv6($sys_dnsserver)) {
+						$sys_dnsserver = "[{$sys_dnsserver}]";
+					}
+					$dns_nameservers[] = $sys_dnsserver;
 				}
-				$dns_nameservers[] = $sys_dnsserver;
 			}
 		}
 	}
@@ -1561,6 +1593,7 @@ global $ntp_poll_min_value, $ntp_poll_max_value;
 global $ntp_poll_min_default_gps, $ntp_poll_max_default_gps;
 global $ntp_poll_min_default_pps, $ntp_poll_max_default_pps;
 global $ntp_poll_min_default, $ntp_poll_max_default;
+global $ntp_auth_halgos;
 $ntp_poll_min_value = 4;
 $ntp_poll_max_value = 17;
 $ntp_poll_min_default_gps = 4;
@@ -1569,6 +1602,10 @@ $ntp_poll_min_default_pps = 4;
 $ntp_poll_max_default_pps = 4;
 $ntp_poll_min_default = 'omit';
 $ntp_poll_max_default = 9;
+$ntp_auth_halgos = array(
+	'md5' => 'MD5',
+	'sha1' => 'SHA1'
+);
 
 function system_ntp_poll_values() {
 	global $ntp_poll_min_value, $ntp_poll_max_value;
@@ -1734,6 +1771,7 @@ function system_ntp_configure() {
 		}
 		@unlink("{$g['varrun_path']}/ntpd.pid");
 		@unlink("{$g['varetc_path']}/ntpd.conf");
+		@unlink("{$g['varetc_path']}/ntp.keys");
 		log_error("NTPD is disabled.");
 		return;
 	}
@@ -1748,10 +1786,30 @@ function system_ntp_configure() {
 	}
 	@unlink("{$g['varrun_path']}/ntpd.pid");
 
+	/* set NTP server authentication key */
+	if ($config['ntpd']['serverauth'] == 'yes') {
+		$ntpkeyscfg = "1 " . strtoupper($config['ntpd']['serverauthalgo']) . " " . base64_decode($config['ntpd']['serverauthkey']) . "\n";
+		if (!@file_put_contents("{$g['varetc_path']}/ntp.keys", $ntpkeyscfg)) {
+			log_error(sprintf(gettext("Could not open %s/ntp.keys for writing"), $g['varetc_path']));
+			return;
+		}
+	} else {
+		unlink_if_exists("{$g['varetc_path']}/ntp.keys");
+	}
+
 	$ntpcfg = "# \n";
 	$ntpcfg .= "# pfSense ntp configuration file \n";
 	$ntpcfg .= "# \n\n";
-	$ntpcfg .= "tinker panic 0 \n";
+	$ntpcfg .= "tinker panic 0 \n\n";
+
+	if ($config['ntpd']['serverauth'] == 'yes') {
+		$ntpcfg .= "# Authentication settings \n";
+		$ntpcfg .= "keys /var/etc/ntp.keys \n";
+		$ntpcfg .= "trustedkey 1 \n";
+		$ntpcfg .= "requestkey 1 \n";
+		$ntpcfg .= "controlkey 1 \n";
+		$ntpcfg .= "\n";
+	}
 
 	/* Add Orphan mode */
 	$ntpcfg .= "# Orphan mode stratum and Maximum candidate NTP peers\n";
@@ -1899,6 +1957,11 @@ function system_ntp_configure() {
 			$have_pools = true;
 		} else {
 			$ntpcfg .= 'server ';
+			if ($config['ntpd']['dnsresolv'] == 'inet') {
+				$ntpcfg .= '-4 ';
+			} elseif ($config['ntpd']['dnsresolv'] == 'inet6') {
+				$ntpcfg .= '-6 ';
+			}
 		}
 
 		$ntpcfg .= "{$ts} iburst";

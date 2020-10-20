@@ -693,6 +693,14 @@ class altq_root_queue {
 	function GetBwscale() {
 		return $this->bandwidthtype;
 	}
+	function FormGetBwscale() {
+		if ($this->GetBwscale()) {
+			$bwscale = $this->GetBwscale();
+		} else {
+			$bwscale = 'Mb';
+		}
+		return $bwscale;
+	}
 	function SetBwscale($bwscale) {
 		$this->bandwidthtype = $bwscale;
 	}
@@ -1157,7 +1165,7 @@ class altq_root_queue {
 		$group->add(new Form_Select(
 			'bandwidthtype',
 			null,
-			$this->GetBwscale(),
+			$this->FormGetBwscale(),
 			array('Kb' => 'Kbit/s',
 				  'Mb' => 'Mbit/s',
 				  'Gb' => 'Gbit/s',
@@ -1364,6 +1372,14 @@ class priq_queue {
 	}
 	function GetBwscale() {
 		return $this->qbandwidthtype;
+	}
+	function FormGetBwscale() {
+		if ($this->GetBwscale()) {
+			$bwscale = $this->GetBwscale();
+		} else {
+			$bwscale = 'Mb';
+		}
+		return $bwscale;
 	}
 	function SetBwscale($scale) {
 		$this->qbandwidthtype = $scale;
@@ -1814,28 +1830,28 @@ class priq_queue {
 			null,
 			null,
 			!empty($this->GetRed())
-		))->setHelp('%1$sRandom Early Detection%2$s', '<a target="_new" href="https://docs.netgate.com/pfsense/en/latest/book/trafficshaper/advanced-customization.html#editing-shaper-queues">', '</a>');
+		))->setHelp('%1$sRandom Early Detection%2$s', '<a target="_new" href="https://docs.netgate.com/pfsense/en/latest/trafficshaper/advanced.html#editing-shaper-queues">', '</a>');
 
 		$group->add(new Form_Checkbox(
 			'rio',
 			null,
 			null,
 			!empty($this->GetRio())
-		))->setHelp('%1$sRandom Early Detection In and Out%2$s', '<a target="_new" href="https://docs.netgate.com/pfsense/en/latest/book/trafficshaper/advanced-customization.html#editing-shaper-queues">', '</a>');
+		))->setHelp('%1$sRandom Early Detection In and Out%2$s', '<a target="_new" href="https://docs.netgate.com/pfsense/en/latest/trafficshaper/advanced.html#editing-shaper-queues">', '</a>');
 
 		$group->add(new Form_Checkbox(
 			'ecn',
 			null,
 			null,
 			!empty($this->GetEcn())
-		))->setHelp('%1$sExplicit Congestion Notification%2$s', '<a target="_new" href="https://docs.netgate.com/pfsense/en/latest/book/trafficshaper/advanced-customization.html#editing-shaper-queues">', '</a>');
+		))->setHelp('%1$sExplicit Congestion Notification%2$s', '<a target="_new" href="https://docs.netgate.com/pfsense/en/latest/trafficshaper/advanced.html#editing-shaper-queues">', '</a>');
 
 		$group->add(new Form_Checkbox(
 			'codel',
 			null,
 			null,
 			!empty($this->GetCodel())
-		))->setHelp('%1$sCodel Active Queue%2$s', '<a target="_new" href="https://docs.netgate.com/pfsense/en/latest/book/trafficshaper/altq-scheduler-types.html#codel-active-queue-management">', '</a>');
+		))->setHelp('%1$sCodel Active Queue%2$s', '<a target="_new" href="https://docs.netgate.com/pfsense/en/latest/trafficshaper/altq-scheduler-types.html#codel-active-queue-management">', '</a>');
 
 		$group->setHelp('Select options for this queue');
 
@@ -2634,7 +2650,7 @@ EOJS;
 		$group->add(new Form_Select(
 			'bandwidthtype',
 			null,
-			$this->GetBwscale(),
+			$this->FormGetBwscale(),
 			array('Kb' => 'Kbit/s',
 				  'Mb' => 'Mbit/s',
 				  'Gb' => 'Gbit/s',
@@ -3148,7 +3164,7 @@ class cbq_queue extends priq_queue {
 		$group->add(new Form_Select(
 			'bandwidthtype',
 			null,
-			$this->GetBwscale(),
+			$this->FormGetBwscale(),
 			array('Kb' => 'Kbit/s',
 				  'Mb' => 'Mbit/s',
 				  'Gb' => 'Gbit/s',
@@ -3421,7 +3437,7 @@ class fairq_queue extends priq_queue {
 		$group->add(new Form_Select(
 			'bandwidthtype',
 			null,
-			$this->GetBwscale(),
+			$this->FormGetBwscale(),
 			array('Kb' => 'Kbit/s',
 				  'Mb' => 'Mbit/s',
 				  'Gb' => 'Gbit/s',
@@ -4134,7 +4150,10 @@ class dnpipe_class extends dummynet_class {
 		}
 		$selectedScheduler = getSchedulers()[$this->getScheduler()];
 		if ($selectedScheduler) {
-			$pfq_rule .= "\nsched ". $this->GetNumber() . " config pipe " . $this->GetNumber() . " " . FormatParameters($selectedScheduler["parameter_format"], $this->GetSchedulerParameters());
+			$pfq_rule .= "\nsched ". $this->GetNumber() . " config ";
+			$pfq_rule .= "pipe ". $this->GetNumber();
+			$this->build_mask_rules($pfq_rule);
+			$pfq_rule .= " " . FormatParameters($selectedScheduler["parameter_format"], $this->GetSchedulerParameters());			
 			if ($selectedScheduler["ecn"]) {
 				if ($this->getECN() == 'on') {
 					$pfq_rule .= ' ecn';
