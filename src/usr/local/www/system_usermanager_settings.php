@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2007 Bill Marquette <bill.marquette@gmail.com>
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ if ($_REQUEST['ajax']) {
 	} else {
 		print("<pre>");
 
-		print('<table class="table table-hover table-striped table-condensed">');
+		print('<table class="table table-hover table-condensed">');
 
 		print("<tr><td>" . sprintf(gettext('Attempting connection to %1$s%2$s%3$s'), "<td><center>", htmlspecialchars($auth_server_host), "</center></td>"));
 		if (ldap_test_connection($authcfg)) {
@@ -68,7 +68,7 @@ if ($_REQUEST['ajax']) {
 
 					if (is_array($ous)) {
 						print("<b>" . gettext("Organization units found") . "</b>");
-						print('<table class="table table-hover">');
+						print('<table class="table-hover">');
 						foreach ($ous as $ou) {
 							print("<tr><td>" . $ou . "</td></tr>");
 						}
@@ -104,6 +104,8 @@ if (isset($config['system']['webgui']['authmode'])) {
 	$pconfig['authmode'] = "Local Database";
 }
 
+$pconfig['shellauth'] = isset($config['system']['webgui']['shellauth']) ? true : false;
+
 $pconfig['backend'] = $config['system']['webgui']['backend'];
 
 $pconfig['auth_refresh_time'] = $config['system']['webgui']['auth_refresh_time'];
@@ -132,9 +134,15 @@ if ($_POST) {
 		}
 	}
 
-	if ((auth_get_authserver($_POST['authmode'])['type'] == 'radius') &&
-		!isset(auth_get_authserver($_POST['authmode'])['radius_auth_port'])) {
+	$authcfg = auth_get_authserver($_POST['authmode']);
+	if (($authcfg['type'] == 'radius') && !isset($authcfg['radius_auth_port'])) {
 		$input_errors[] = gettext("RADIUS Authentication Server must provide Authentication service.");
+	}
+
+	if (($authcfg['type'] == 'ldap') && empty($authcfg['ldap_pam_groupdn']) &&
+	    isset($_POST['shellauth'])) {
+		$input_errors[] = gettext("Shell Authentication Group DN must be specified for LDAP server if " . 
+			"Shell Authentication is used.");
 	}
 
 	if (($_POST['authmode'] == "Local Database") && $_POST['savetest']) {
@@ -165,13 +173,19 @@ if ($_POST) {
 			unset($config['system']['webgui']['authmode']);
 		}
 
+		if (isset($_POST['shellauth'])) {
+			$config['system']['webgui']['shellauth'] = true;
+		} else {
+			unset($config['system']['webgui']['shellauth']);
+		}
+
 		if (isset($_POST['auth_refresh_time']) && $_POST['auth_refresh_time'] != "") {
 			$config['system']['webgui']['auth_refresh_time'] = intval($_POST['auth_refresh_time']);
 		} else {
 			unset($config['system']['webgui']['auth_refresh_time']);
 		}
 
-		write_config();
+		write_config("User Manager Settings saved");
 		set_pam_auth();
 	}
 }
@@ -226,7 +240,18 @@ $section->addInput(new Form_Select(
 	'*Authentication Server',
 	$pconfig['authmode'],
 	$auth_servers
-))->setHelp('To allow SSH and console logins with RADIUS credentials, equivalent local users with the expected privileges must be created first.'); 
+));
+
+$section->addInput(new Form_Checkbox(
+	'shellauth',
+	'Shell Authentication',
+	'Use Authentication Server for Shell Authentication',
+	$pconfig['shellauth'],
+))->setHelp('If RADIUS or LDAP server is selected it is used for console and SSH authentication. ' .
+	    'Otherwise, the Local Database is used.%1$s To allow logins with RADIUS credentials, ' .
+	    'equivalent local users with the expected privileges must be created first.%1$s ' .
+	    'To allow logins with LDAP credentials, ' .
+	    'Shell Authentication Group DN must be specified on the LDAP server configuration page.', '<br/>'); 
 
 $section->addInput(new Form_Input(
 	'auth_refresh_time',
@@ -250,7 +275,7 @@ $modal = new Modal("LDAP settings", "testresults", true);
 
 $modal->addInput(new Form_StaticText(
 	'Test results',
-	'<span id="ldaptestop">Testing pfSense LDAP settings... One moment please...' . $g['product_name'] . '</span>'
+	'<span id="ldaptestop">Testing %s LDAP settings... One moment please...</span>', $g['product_label']
 ));
 
 $form->add($modal);

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2017 Peter Schofield (parts of this file)
  * All rights reserved.
  *
@@ -154,7 +154,9 @@ function get_real_interface_fast($interfaces = array(), $family = "all", $realv6
 								case 'ppp':
 								case 'l2tp':
 								case 'pptp':
-									if (isset($cfg['dhcp6usev4iface']) && $realv6iface === false) {
+									// Added catch for static v6 but using v4 link. Sets things to use pppoe link
+									if ((isset($cfg['dhcp6usev4iface']) && $realv6iface === false) ||
+									    isset($cfg['ipv6usev4iface']) || isset($cfg['slaacusev4iface'])) {
 										$wanif = $cfg['if'];
 									} else {
 										$parents = get_parent_interface($interface);
@@ -219,7 +221,7 @@ function get_real_interface_fast($interfaces = array(), $family = "all", $realv6
  *
  */
 function interface_assign_description_fast($portlist, $friendlyifnames) {
-	global $ovpn_descrs, $ipsec_descrs;
+	global $ovpn_descrs, $ipsec_descrs, $wg_descrs;
 	$out = array();
 	$gettext = gettext('on');
 	foreach($portlist as $portname => $portinfo) {
@@ -254,11 +256,6 @@ function interface_assign_description_fast($portlist, $friendlyifnames) {
 			if ($portinfo['descr']) {
 				$descr .= " (" . $portinfo['descr'] . ")";
 			}
-		} elseif ($portinfo['isvxlan']) {
-			$descr = "VXLAN {$portinfo['remote-addr']}";
-			if ($portinfo['descr']) {
-				$descr .= " (" . $portinfo['descr'] . ")";
-			}
 		} elseif ($portinfo['islagg']) {
 			$descr = strtoupper($portinfo['laggif']);
 			if ($portinfo['descr']) {
@@ -270,6 +267,8 @@ function interface_assign_description_fast($portlist, $friendlyifnames) {
 			$descr = $portname . " (" . $ovpn_descrs[substr($portname, 5)] . ")";
 		} elseif (substr($portname, 0, 5) == 'ipsec') {
 			$descr = $portname . " (" . $ipsec_descrs[$portname] . ")";
+		} elseif (substr($portname, 0, 2) == 'wg') {
+			$descr = $portname . " (" . $wg_descrs[$portname] . ")";
 		} else {
 			$descr = $portname . " (" . $portinfo['mac'] . ")";
 		}

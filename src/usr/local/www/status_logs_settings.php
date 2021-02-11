@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -535,7 +535,7 @@ $group->add(new Form_MultiCheckbox(
 
 $group->setHelp('Syslog sends UDP datagrams to port 514 on the specified remote '.
 	'syslog server, unless another port is specified. Be sure to set syslogd on '.
-	'the remote server to accept syslog messages from pfSense.');
+	'the remote server to accept syslog messages from %s.', $g['product_label']);
 
 $section->add($group);
 

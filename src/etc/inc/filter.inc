@@ -7,7 +7,7 @@
  * Copyright (c) 2006 Peter Allgeyer
  * Copyright (c) 2008-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally part of m0n0wall (http://m0n0.ch/wall)
@@ -97,8 +97,14 @@ $icmptypes = array(
  * Specify the driver prefix to match (from the left)
  * https://redmine.pfsense.org/issues/8685
  */
-global $filter_interface_blacklist;
-$filter_interface_blacklist = array("ipsec");
+global $filter_interface_remove;
+$filter_interface_remove = array();
+
+if ($config['ipsec']['filtermode'] == 'if_ipsec') {
+	$filter_interface_remove[] = 'enc';
+} else {
+	$filter_interface_remove[] = 'ipsec';
+}
 
 /*
  * Fixed tracker values (used to group and track usage in GUI):
@@ -428,11 +434,6 @@ function filter_configure_sync($delete_states_if_needed = true) {
 
 	unset($aliases, $gateways, $altq_queues, $natrules, $pfrules);
 
-	// Copy rules.debug to rules.debug.old
-	if (file_exists("{$g['tmp_path']}/rules.debug")) {
-		@copy("{$g['tmp_path']}/rules.debug", "{$g['tmp_path']}/rules.debug.old");
-	}
-
 	if (!@file_put_contents("{$g['tmp_path']}/rules.debug", $rules, LOCK_EX)) {
 		log_error("WARNING: Could not write new rules!");
 		unlock($filterlck);
@@ -492,8 +493,8 @@ function filter_configure_sync($delete_states_if_needed = true) {
 				exec("/sbin/pfctl -d; /sbin/pfctl -e; /sbin/pfctl -f {$g['tmp_path']}/rules.debug");
 				$error_msg = gettext("PF was wedged/busy and has been reset.");
 				file_notice("pf_busy", $error_msg, "pf_busy", "");
-			} else {
-				$_grbg = exec("/sbin/pfctl -o basic -f {$g['tmp_path']}/rules.debug.old 2>&1");
+			} elseif (file_exists("{$g['cf_conf_path']}/rules.debug.old")) {
+				$_grbg = exec("/sbin/pfctl -o basic -f {$g['cf_conf_path']}/rules.debug.old 2>&1");
 			}
 			if ($line_error and $line_number) {
 				file_notice("filter_load", sprintf(gettext('There were error(s) loading the rules: %1$s - %2$s'), $saved_line_error, $line_error), "Filter Reload", "");
@@ -503,6 +504,10 @@ function filter_configure_sync($delete_states_if_needed = true) {
 			}
 		}
 		unset($rules_loading, $rules_error);
+	} else {
+		/* Save the last version that works */
+		@copy("{$g['tmp_path']}/rules.debug",
+		    "{$g['cf_conf_path']}/rules.debug.old");
 	}
 
 	# If we are not using bogonsv6 then we can remove any bogonsv6 table from the running pf (if the table is not there, the kill is still fine).
@@ -959,11 +964,12 @@ function filter_generate_gateways() {
 					    isset($GatewaysList[$member['gw']]) &&
 					    (isset($GatewaysList[$member['gw']]['action_disable']) ||
 					    (!isset($GatewaysList[$member['gw']]['force_down']) &&
-					    !stristr($GatewaysStatus[$member['gw']]['status'], 'down') && 
-					    ((!stristr($GatewaysStatus[$member['gw']]['status'], 'loss') &&
-					    !stristr($trigger, 'loss')) ||
-					    (!stristr($GatewaysStatus[$member['gw']]['status'], 'delay') &&
-					    !stristr($trigger, 'latency')))))) {
+					    ((($GatewaysStatus[$member['gw']]['status'] != 'down') &&
+					    ($trigger == 'down')) ||
+					    (($GatewaysStatus[$member['gw']]['substatus'] != 'highloss') &&
+					    stristr($trigger, 'loss')) ||
+					    (($GatewaysStatus[$member['gw']]['substatus'] != 'highdelay') &&
+					    stristr($trigger, 'latency')))))) {
 						if ($g['debug']) {
 							log_error(sprintf(gettext('Setting up route with %1$s on %2$s'), $gatewayip, $int));
 						}
@@ -1082,6 +1088,23 @@ function filter_get_vpns_list() {
 						$vpns_arr[] = $pppoesub;
 					}
 				}
+			}
+		}
+	}
+
+	/* wireguard */
+	if (is_wg_enabled()) {
+		foreach ($config['wireguard']['tunnel'] as $wg) {
+			if (empty($wg['enabled'])) {
+				continue;
+			}
+			if (!is_array($wg['peers']['wgpeer']) ||
+			    count($wg['peers']['wgpeer']) == 0) {
+				continue;
+			}
+			$wgpeer = $wg['peers']['wgpeer'];
+			foreach (explode(",", $wgpeer['allowedips']) as $ip) {
+				$vpns_arr[] = $ip;
 			}
 		}
 	}
@@ -1292,6 +1315,15 @@ function filter_generate_optcfg_array() {
 		$oic['type'] = "none";
 		$oic['virtual'] = true;
 		$FilterIflist['openvpn'] = $oic;
+	}
+	/* add wireguard interfaces */
+	if (is_wg_enabled()) {
+		$oic = array();
+		$oic['if'] = "wg";
+		$oic['descr'] = 'WireGuard';
+		$oic['type'] = "none";
+		$oic['virtual'] = true;
+		$FilterIflist['wireguard'] = $oic;
 	}
 	/* add interface groups */
 	if (isset($config['ifgroups']['ifgroupentry']) && is_array($config['ifgroups']['ifgroupentry'])) {
@@ -1738,6 +1770,11 @@ function filter_nat_rules_automatic_tonathosts($with_descr = false) {
 		}
 	}
 
+	foreach (wg_get_tunnel_networks('ipv4') as $wgn) {
+		$tonathosts[] = $wgn;
+		$descriptions[] = gettext('WireGuard');
+	}
+
 	/* IPsec mode_cfg subnet */
 	if ((isset($config['ipsec']['client']['enable'])) &&
 	    (!empty($config['ipsec']['client']['pool_address'])) &&
@@ -1795,7 +1832,8 @@ function filter_nat_rules_outbound_automatic($src) {
 	$rules = array();
 	foreach ($FilterIflist as $if => $ifcfg) {
 		if ((substr($ifcfg['if'], 0, 4) == "ovpn") ||
-		    (substr($ifcfg['if'], 0, 5) == "ipsec")) {
+		    (substr($ifcfg['if'], 0, 5) == "ipsec") ||
+		    (substr($ifcfg['if'], 0, 2) == "wg")) {
 			continue;
 		}
 		if (!interface_has_gateway($if)) {
@@ -2410,6 +2448,8 @@ function filter_nat_rules_generate() {
 
 			if (is_ipaddr($rule['target'])) {
 				$target = $rule['target'];
+			} elseif (is_alias($rule['target'])) {
+				$target = alias_expand($rule['target']);
 			} else {
 				$tmprule = array();
 				$tmprule['localip']['network'] = $rule['target'];
@@ -2453,6 +2493,12 @@ function filter_nat_rules_generate() {
 
 			if (!isset($FilterIflist[$natif])) {
 				continue;
+			}
+
+			if (($ipproto == 'inet6') && is_stf_interface($natif)) {
+				$rdrif = $natif . "_stf";
+			} else {
+				$rdrif = $FilterIflist[$natif]['if'];
 			}
 
 			$srcaddr = filter_generate_address($rule, 'source', true);
@@ -2519,7 +2565,7 @@ function filter_nat_rules_generate() {
 			}
 
 			if ($srcaddr <> "" && $dstaddr <> "" && $natif) {
-				$natrules .= "{$nordr}rdr {$rdrpass}on {$natif} {$ipproto} proto {$protocol} from {$srcaddr} to {$dstaddr}" . ($nordr == "" ? " -> {$target}{$localport}" : "");
+				$natrules .= "{$nordr}rdr {$rdrpass}on {$rdrif} {$ipproto} proto {$protocol} from {$srcaddr} to {$dstaddr}" . ($nordr == "" ? " -> {$target}{$localport}" : "");
 
 				/* Does this rule redirect back to a internal host? */
 				if (isset($rule['destination']['any']) && !isset($rule['nordr']) && !isset($config['system']['enablenatreflectionhelper']) && !interface_has_gateway($rule['interface'])) {
@@ -2537,9 +2583,9 @@ function filter_nat_rules_generate() {
 						 * See https://redmine.pfsense.org/issues/8604 */
 						if ((($ipproto == 'inet') && !empty(get_interface_ip($natif))) || 
 						    (($ipproto == 'inet6') && !empty(get_interface_ipv6($natif)))) {
-							$natrules .= "no nat on {$natif} {$ipproto} proto tcp from ({$natif}) to {$rule_subnet}/{$rule_interface_subnet}\n";
+							$natrules .= "no nat on {$rdrif} {$ipproto} proto tcp from ({$natif}) to {$rule_subnet}/{$rule_interface_subnet}\n";
 						}
-						$natrules .= "nat on {$natif} {$ipproto} proto tcp from {$rule_subnet}/{$rule_interface_subnet} to {$target} port {$dstport[0]} -> ({$natif})\n";
+						$natrules .= "nat on {$rdrif} {$ipproto} proto tcp from {$rule_subnet}/{$rule_interface_subnet} to {$target} port {$dstport[0]} -> ({$natif})\n";
 					}
 				}
 
@@ -3923,7 +3969,7 @@ EOD;
 		$rule_arr1 = array();
 		$rule_arr2 = array();
 		$rule_arr3 = array();
-		$vpn_and_ppp_ifs = array("l2tp", "pptp", "pppoe", "enc0", "openvpn");
+		$vpn_and_ppp_ifs = array("l2tp", "pptp", "pppoe", "enc0", "openvpn", "wireguard");
 		/*
 		 * NB: The order must be: Floating rules, then interface group and then regular ones.
 		 */
@@ -4336,6 +4382,7 @@ function filter_process_carp_rules($log) {
 	$lines = "";
 	/* return if there are no carp configured items */
 	if (!empty($config['hasync']) or !empty($config['virtualip']['vip'])) {
+		$lines .= "\n# CARP rules\n";
 		$lines .= "block in {$log['block']} quick proto carp from (self) to any tracker {$increment_tracker()}\n";
 		$lines .= "pass {$log['pass']} quick proto carp tracker {$increment_tracker()} no state\n";
 	}
@@ -4659,13 +4706,13 @@ function move_separators(&$a_separators, $ridx, $mvnrows) {
 }
 
 function filter_get_interface_list() {
-	global $filter_interface_blacklist;
+	global $filter_interface_remove;
 	$iflist = create_interface_list();
 	$filter_ifs = array();
 	foreach ($iflist as $ifent => $ifname) {
 		$realifname = get_real_interface($ifent);
-		foreach ($filter_interface_blacklist as $ifbl) {
-			if (substr($realifname, 0, strlen($ifbl)) == $ifbl) {
+		foreach ($filter_interface_remove as $ifr) {
+			if (substr($realifname, 0, strlen($ifr)) == $ifr) {
 				continue 2;
 			}
 		}

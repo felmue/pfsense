@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -197,10 +197,10 @@ if ($_POST['save']) {
 		$_POST['src'] = $_POST['srctype'];
 		$_POST['srcmask'] = 0;
 	} elseif ($_POST['srctype'] == "single") {
-		if ($_POST['ipprotocol'] == 'inet') {
-			$_POST['srcmask'] = 32;
-		} else {
+		if (is_ipaddrv6($_POST['src'])) {
 			$_POST['srcmask'] = 128;
+		} else {
+			$_POST['srcmask'] = 32;
 		}
 	}
 
@@ -208,18 +208,18 @@ if ($_POST['save']) {
 		$_POST['dst'] = $_POST['dsttype'];
 		$_POST['dstmask'] = 0;
 	} elseif ($_POST['dsttype'] == "single") {
-		if ($_POST['ipprotocol'] == 'inet') {
-			$_POST['dstmask'] = 32;
-		} else {
+		if (is_ipaddrv6($_POST['dst'])) {
 			$_POST['dstmask'] = 128;
+		} else {
+			$_POST['dstmask'] = 32;
 		}
 	} elseif (is_ipaddr($_POST['dsttype'])) {
 		$_POST['dst'] = $_POST['dsttype'];
 		$_POST['dsttype'] = "single";
-		if ($_POST['ipprotocol'] == 'inet') {
-			$_POST['dstmask'] = 32;
-		} else {
+		if (is_ipaddrv6($_POST['dst'])) {
 			$_POST['dstmask'] = 128;
+		} else {
+			$_POST['dstmask'] = 32;
 		}
 	}
 
@@ -338,7 +338,7 @@ if ($_POST['save']) {
 				$input_errors[] = sprintf(gettext("Source must be IPv6."));
 			}
 		}
-		if (($_POST['srcmask'] && !is_subnet($_POST['src'] . '/' . $_POST['srcmask']))) {
+		if (is_ipaddr($_POST['src']) && !is_subnet($_POST['src'] . '/' . $_POST['srcmask'])) {
 			$input_errors[] = gettext("A valid source bit count must be specified.");
 		}
 	}
@@ -354,7 +354,7 @@ if ($_POST['save']) {
 				$input_errors[] = sprintf(gettext("Destination must be IPv6."));
 			}
 		}
-		if (($_POST['dstmask'] && !is_subnet($_POST['dst'] . '/' . $_POST['dstmask']))) {
+		if (is_ipaddr($_POST['dst']) && !is_subnet($_POST['dst'] . '/' . $_POST['dstmask'])) {
 			$input_errors[] = gettext("A valid destination bit count must be specified.");
 		}
 	}
@@ -618,7 +618,8 @@ function srctype_selected() {
 		$selected = $pconfig['src'];
 	} else {
 		if ((($pconfig['srcmask'] == 32) && ($pconfig['ipprotocol'] == 'inet')) ||
-		    (($pconfig['srcmask'] == 128) && ($pconfig['ipprotocol'] == 'inet6'))) {
+		    (($pconfig['srcmask'] == 128) && ($pconfig['ipprotocol'] == 'inet6')) || 
+		    is_alias($pconfig['src'])) {
 			$selected = 'single';
 		} else {
 			$selected = 'network';
@@ -689,7 +690,8 @@ function dsttype_selected() {
 		$selected = $pconfig['dst'];
 	} else {
 		if ((($pconfig['dstmask'] == 32) && ($pconfig['ipprotocol'] == 'inet')) ||
-		    (($pconfig['dstmask'] == 128) && ($pconfig['ipprotocol'] == 'inet6'))) {
+		    (($pconfig['dstmask'] == 128) && ($pconfig['ipprotocol'] == 'inet6')) ||
+		    is_alias($pconfig['dst'])) {
 			$selected = 'single';
 		} else {
 			$selected = 'network';

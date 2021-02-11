@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2015 Warren Baker <warren@percol8.co.za>
  * Copyright (c) 2015-2016 Electric Sheep Fencing
- * Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally part of m0n0wall (http://m0n0.ch/wall)
@@ -231,6 +231,12 @@ EOF;
 		$bindintcfg .= "interface-automatic: " . (isset($unboundcfg['enablessl']) ? "no" : "yes") . "\n";
 	} else {
 		foreach ($active_interfaces as $ubif) {
+			/* Do not bind to disabled/nocarrier interfaces,
+			 * see https://redmine.pfsense.org/issues/11087 */
+			$ifinfo = get_interface_info($ubif);
+			if ($ifinfo && (($ifinfo['status'] != 'up') || !$ifinfo['enable'])) {
+				continue;
+			}
 			if (is_ipaddr($ubif)) {
 				$bindints[] = $ubif;
 			} else {
@@ -287,6 +293,10 @@ EOF;
 		$outgoingints = "# Outgoing interfaces to be used\n";
 		$outgoing_interfaces = explode(",", $unboundcfg['outgoing_interface']);
 		foreach ($outgoing_interfaces as $outif) {
+			$ifinfo = get_interface_info($outif);
+			if ($ifinfo && (($ifinfo['status'] != 'up') || !$ifinfo['enable'])) {
+				continue;
+			}
 			$outip = get_interface_ip($outif);
 			if (is_ipaddr($outip)) {
 				$outgoingints .= "outgoing-interface: $outip\n";
@@ -357,6 +367,7 @@ include: {$g['unbound_chroot_path']}{$cfgsubdir}/openvpn.*.conf
 EOD;
 	} else {
 		$openvpn_clients_conf = '';
+		unlink_if_exists("{$g['unbound_chroot_path']}{$cfgsubdir}/openvpn.*.conf");
 	}
 
 	// Set up forwarding if it is configured
@@ -865,6 +876,7 @@ function unbound_acls_config($cfgsubdir = "") {
 			$active_interfaces = get_configured_interface_with_descr();
 		}
 
+		$aclnets = array();
 		foreach ($active_interfaces as $ubif => $ifdesc) {
 			$ifip = get_interface_ip($ubif);
 			if (is_ipaddrv4($ifip)) {
@@ -877,7 +889,7 @@ function unbound_acls_config($cfgsubdir = "") {
 					$subnet_ip = gen_subnetv6($ifip, $subnet_bits);
 					// only add LAN-type interfaces
 					if (!interface_has_gateway($ubif)) {
-						$aclcfg .= "access-control: {$subnet_ip}/{$subnet_bits} allow\n";
+						$aclnets[] = "{$subnet_ip}/{$subnet_bits}";
 					}
 				}
 				// add for IPv6 static routes to local networks
@@ -887,7 +899,7 @@ function unbound_acls_config($cfgsubdir = "") {
 				foreach ($static_routes as $route) {
 					if ((lookup_gateway_interface_by_name($route['gateway']) == $ubif) && !interface_has_gateway($ubif)) {
 						// route is on this interface, interface doesn't have gateway, add it
-						$aclcfg .= "access-control: {$route['network']} allow\n";
+						$aclnets[] = $route['network'];
 					}
 				}
 			}
@@ -898,7 +910,7 @@ function unbound_acls_config($cfgsubdir = "") {
 			if (is_array($config['openvpn'][$ovpnentry])) {
 				foreach ($config['openvpn'][$ovpnentry] as $ovpnent) {
 					if (!isset($ovpnent['disable']) && !empty($ovpnent['tunnel_networkv6'])) {
-						$aclcfg .= "access-control: {$ovpnent['tunnel_networkv6']} allow\n";
+						$aclnets[] = $ovpnent['tunnel_networkv6'];
 					}
 				}
 			}
@@ -907,17 +919,35 @@ function unbound_acls_config($cfgsubdir = "") {
 		if ((isset($config['ipsec']['client']['enable'])) &&
 		    (!empty($config['ipsec']['client']['pool_address_v6'])) &&
 		    (!empty($config['ipsec']['client']['pool_netbits_v6']))) {
-			$aclcfg .= "access-control: {$config['ipsec']['client']['pool_address_v6']}/{$config['ipsec']['client']['pool_netbits_v6']} allow\n";
+			$aclnets[] = "{$config['ipsec']['client']['pool_address_v6']}/{$config['ipsec']['client']['pool_netbits_v6']}";
 		}
+
+		// WireGuard Interface Networks
+		$aclnets = array_merge($aclnets, wg_get_tunnel_networks());
 
 		// Generate IPv4 access-control entries using the same logic as automatic outbound NAT
 		if (empty($FilterIflist)) {
 			filter_generate_optcfg_array();
 		}
-		$natnetworks_array = array();
-		$natnetworks_array = filter_nat_rules_automatic_tonathosts();
-		foreach ($natnetworks_array as $allowednet) {
-			$aclcfg .= "access-control: $allowednet allow \n";
+		$aclnets = array_merge($aclnets, filter_nat_rules_automatic_tonathosts());
+
+		/* Automatic ACL networks deduplication and sorting
+		 * https://redmine.pfsense.org/issues/11309 */
+		$aclnets4 = array();
+		$aclnets6 = array();
+		foreach (array_unique($aclnets) as $acln) {
+			if (is_v4($acln)) {
+				$aclnets4[] = $acln;
+			} else {
+				$aclnets6[] = $acln;
+			}
+		}
+		/* ipcmp only supports IPv4 */
+		usort($aclnets4, "ipcmp");
+		sort($aclnets6);
+
+		foreach (array_merge($aclnets4, $aclnets6) as $acln) {
+			$aclcfg .= "access-control: {$acln} allow \n";
 		}
 	}
 

@@ -3,7 +3,7 @@
 # rc.gateway_alarm
 #
 # Copyright (c) 2015-2016 Electric Sheep Fencing
-# Copyright (c) 2015-2020 Rubicon Communications, LLC (Netgate)
+# Copyright (c) 2015-2021 Rubicon Communications, LLC (Netgate)
 # All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,9 +36,6 @@ print_rtt() {
 }
 
 echo ">>> Gateway alarm: ${GW} (Addr:${alarm_addr} Alarm:${alarm_flag} RTT:$( print_rtt ${alarm_rtt} ) RTTsd:$( print_rtt ${alarm_rttsd} ) Loss:${alarm_loss}%)" | /usr/bin/logger -p daemon.info -i -t rc.gateway_alarm
-
-# Save the gateway alarm readings so they can be read by the scripts below
-echo "${GW} ${alarm_rtt} ${alarm_rttsd} ${alarm_loss}" > "/tmp/.alarm.${GW}"
 
 /usr/local/sbin/pfSctl \
 	-c "service reload dyndns ${GW}" \

@@ -8,7 +8,7 @@
  * Copyright (c) 2006 Paul Taylor <paultaylor@winn-dixie.com>
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -271,8 +271,8 @@ function display_login_form() {
 		$loginbannerstr = sprintf(gettext('%1$s.%2$s'), htmlspecialchars($config['system']['hostname']), htmlspecialchars($config['system']['domain']));
 		$login_title = gettext(htmlspecialchars($config['system']['hostname'] . " - Login"));
 	} else {
-		$loginbannerstr = sprintf(gettext('Login to %1$s'), $g['product_name']);
-		$login_title = gettext("pfSense - Login");
+		$loginbannerstr = sprintf(gettext('Login to %1$s'), $g['product_label']);
+		$login_title = sprintf(gettext("%s - Login"), $g['product_label']);
 	}
 
 	$loginautocomplete = isset($config['system']['webgui']['loginautocomplete']) ? '' : 'autocomplete="off"';

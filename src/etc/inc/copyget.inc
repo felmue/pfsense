@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,14 +40,14 @@ function updatecopyright() {
 
 	if (file_exists($idfile)) {
 		if (function_exists('curl_version')) {
-			$post = ['uid' => file_get_contents($idfile), 'language' => '0', 'edition' => 'community', 'version' => '1'];
+			$post = ['uid' => file_get_contents($idfile), 'language' => '0', 'edition' => 'community', 'version' => '2'];
 			$url = $FQDN;
 
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_HEADER, 0);
 			curl_setopt($ch, CURLOPT_VERBOSE, 0);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_USERAGENT, $g['product_name'] . '/' . $g['product_version']);
+			curl_setopt($ch, CURLOPT_USERAGENT, $g['product_label'] . '/' . $g['product_version']);
 			curl_setopt($ch, CURLOPT_URL, $url);
 			curl_setopt($ch, CURLOPT_POST, true);
 			curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));

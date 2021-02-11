@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2008 Shrew Soft Inc
  * All rights reserved.
  *
@@ -154,6 +154,7 @@ poes:
 	set mppc yes e128
 	set mppc yes stateless
 
+	set iface name poes{$pppoecfg['pppoeid']}-
 	set iface group pppoe
 	set iface up-script /usr/local/sbin/vpn-linkup-poes
 	set iface down-script /usr/local/sbin/vpn-linkdown-poes
@@ -388,7 +389,7 @@ l2tps:
 
 	set ccp yes mppc
 
-	set iface name l2tp
+	set iface name l2tps
 	set iface group l2tp
 	set iface up-script /usr/local/sbin/vpn-linkup-l2tp
 	set iface down-script /usr/local/sbin/vpn-linkdown-l2tp
@@ -488,6 +489,20 @@ function vpn_l2tp_updatesecret() {
 	chmod("{$g['varetc_path']}/l2tp-vpn/mpd.secret", 0600);
 
 	return 0;
+}
+
+function l2tpusercmp($a, $b) {
+	return strcasecmp($a['name'], $b['name']);
+}
+
+function l2tp_users_sort() {
+	global $config;
+
+	if (!is_array($config['l2tp']['user'])) {
+		return;
+	}
+
+	usort($config['l2tp']['user'], "l2tpusercmp");
 }
 
 ?>

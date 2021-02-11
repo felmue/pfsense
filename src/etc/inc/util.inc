@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally part of m0n0wall (http://m0n0.ch/wall)
@@ -464,6 +464,12 @@ function ip_greater_than($ip1, $ip2) {
 
 /* compare two IP addresses */
 function ipcmp($a, $b) {
+	if (is_subnet($a)) {
+		list($a, $amask) = explode('/', $a);
+	}
+	if (is_subnet($b)) {
+		list($b, $bmask) = explode('/', $b);
+	}
 	if (ip_less_than($a, $b)) {
 		return -1;
 	} else if (ip_greater_than($a, $b)) {
@@ -1546,7 +1552,7 @@ function get_configured_ip_addresses() {
 		foreach ($config['pppoes']['pppoe'] as $pppoe) {
 			if ($pppoe['mode'] == "server") {
 				if (is_ipaddr($pppoe['localip'])) {
-					$int = "pppoes". $pppoe['pppoeid'];
+					$int = "poes". $pppoe['pppoeid'];
 					$ip_array[$int] = $pppoe['localip'];
 				}
 			}
@@ -1597,8 +1603,10 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = "")
 				'bridge',
 				'ppp',
 				'pppoe',
+				'poes',
 				'pptp',
 				'l2tp',
+				'l2tps',
 				'sl',
 				'gif',
 				'gre',
@@ -1614,12 +1622,12 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = "")
 				'tun',
 				'lagg',
 				'vip',
-				'ipfw',
-				'vxlan'
+				'ipfw'
 		);
 	} else {
 		$vfaces = array(
 				'bridge',
+				'poes',
 				'sl',
 				'faith',
 				'lo',
@@ -1634,6 +1642,7 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = "")
 				'lagg',
 				'vip',
 				'ipfw',
+				'l2tps'
 		);
 	}
 	switch ($mode) {
@@ -1670,7 +1679,7 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = "")
 		$alink = explode(" ", $link);
 		$ifname = rtrim(trim($alink[0]), '*');
 		/* trim out all numbers before checking for vfaces */
-		if (!in_array(array_shift(preg_split('/\d/', $ifname)), $vfaces) &&
+		if (!in_array(array_shift(preg_split('/(\d-)*\d$/', $ifname)), $vfaces) &&
 		    interface_is_vlan($ifname) == NULL &&
 		    interface_is_qinq($ifname) == NULL &&
 		    !stristr($ifname, "_wlan") &&
@@ -1829,17 +1838,21 @@ function mwexec_bg($command, $clearsigmask = false) {
 	return mwexec($command, false, $clearsigmask, true);
 }
 
-/*	unlink a file, or pattern-match of a file, if it exists
-	if the file/path contains glob() compatible wildcards, all matching files will be unlinked
-	any warning/errors are suppressed (e.g. no matching files to delete)
-	If there are matching file(s) and they were all unlinked OK, then return true.
-	Otherwise return false (the requested file(s) did not exist, or could not be deleted)
-	This allows the caller to know if they were the one to successfully delete the file(s).
-*/
+/*
+ * Unlink a file, or pattern-match of a file, if it exists
+ *
+ * If the file/path contains glob() compatible wildcards, all matching files
+ * will be unlinked.
+ * Any warning/errors are suppressed (e.g. no matching files to delete)
+ * If there are matching file(s) and they were all unlinked OK, then return
+ * true.  Otherwise return false (the requested file(s) did not exist, or
+ * could not be deleted), this allows the caller to know if they were the one
+ * to successfully delete the file(s).
+ */
 function unlink_if_exists($fn) {
 	$to_do = glob($fn);
 	if (is_array($to_do) && count($to_do) > 0) {
-		// Returns an array of true/false indicating if each unlink worked
+		// Returns an array of boolean indicating if each unlink worked
 		$results = @array_map("unlink", $to_do);
 		// If there is no false in the array, then all went well
 		$result = !in_array(false, $results, true);
@@ -1848,6 +1861,7 @@ function unlink_if_exists($fn) {
 	}
 	return $result;
 }
+
 /* make a global alias table (for faster lookups) */
 function alias_make_table() {
 	global $aliastable, $config;
@@ -1894,11 +1908,16 @@ function alias_expand($name) {
 		if (is_numericint($name)) {
 			return null;
 		}
-		// make sure if it's a ports alias, it actually exists. redmine #5845
+		/*
+		 * make sure if it's a ports alias, it actually exists.
+		 * redmine #5845
+		 */
 		foreach ($config['aliases']['alias'] as $alias) {
 			if ($alias['name'] == $name) {
 				if ($alias['type'] == "urltable_ports") {
-					if (is_URL($alias['url']) && file_exists($urltable_filename) && filesize($urltable_filename)) {
+					if (is_URL($alias['url']) &&
+					    file_exists($urltable_filename) &&
+					    filesize($urltable_filename)) {
 						return "\${$name}";
 					} else {
 						return null;
@@ -1907,7 +1926,8 @@ function alias_expand($name) {
 			}
 		}
 		return "\${$name}";
-	} else if (is_ipaddr($name) || is_subnet($name) || is_port_or_range($name)) {
+	} else if (is_ipaddr($name) || is_subnet($name) ||
+	    is_port_or_range($name)) {
 		return "{$name}";
 	} else {
 		return null;
@@ -1919,20 +1939,25 @@ function alias_expand_urltable($name) {
 	$urltable_prefix = "/var/db/aliastables/";
 	$urltable_filename = $urltable_prefix . $name . ".txt";
 
-	if (is_array($config['aliases']['alias'])) {
-		foreach ($config['aliases']['alias'] as $alias) {
-			if (preg_match("/urltable/i", $alias['type']) && ($alias['name'] == $name)) {
-				if (is_URL($alias["url"]) && file_exists($urltable_filename)) {
-					if (!filesize($urltable_filename)) {
-						// file exists, but is empty, try to sync
-						send_event("service sync alias {$name}");
-					}
-					return $urltable_filename;
-				} else {
-					send_event("service sync alias {$name}");
-					break;
-				}
+	if (!is_array($config['aliases']['alias'])) {
+		return null;
+	}
+
+	foreach ($config['aliases']['alias'] as $alias) {
+		if (!preg_match("/urltable/i", $alias['type']) ||
+		    ($alias['name'] != $name)) {
+			continue;
+		}
+
+		if (is_URL($alias["url"]) && file_exists($urltable_filename)) {
+			if (!filesize($urltable_filename)) {
+				// file exists, but is empty, try to sync
+				send_event("service sync alias {$name}");
 			}
+			return $urltable_filename;
+		} else {
+			send_event("service sync alias {$name}");
+			break;
 		}
 	}
 	return null;
@@ -2357,7 +2382,7 @@ function is_interface_mismatch() {
 		foreach ($config['interfaces'] as $ifname => $ifcfg) {
 			if (interface_is_vlan($ifcfg['if']) != NULL ||
 			    interface_is_qinq($ifcfg['if']) != NULL ||
-			    preg_match("/^enc|^cua|^tun|^tap|^l2tp|^pptp|^ppp|^ovpn|^ipsec|^gif|^gre|^lagg|^bridge|^vxlan|vlan|_wlan|_\d{0,4}_\d{0,4}$/i", $ifcfg['if'])) {
+			    preg_match("/^enc|^cua|^tun|^tap|^l2tp|^pptp|^ppp|^ovpn|^ipsec|^gif|^gre|^lagg|^bridge|vlan|^wg|_wlan|_\d{0,4}_\d{0,4}$/i", $ifcfg['if'])) {
 				// Do not check these interfaces.
 				$i++;
 				continue;
@@ -2645,7 +2670,8 @@ function route_get($target, $ipprotocol = '') {
 
 	$result = array();
 	foreach ($rtable[$family] as $item) {
-		if (ip_in_subnet($target, $item['destination'])) {
+		if ($item['destination'] == $target ||
+		    ip_in_subnet($target, $item['destination'])) {
 			$result[] = $item;
 		}
 	}

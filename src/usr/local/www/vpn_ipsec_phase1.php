@@ -6,7 +6,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2008 Shrew Soft Inc
  * All rights reserved.
  *
@@ -101,9 +101,10 @@ if (isset($p1index) && $a_phase1[$p1index]) {
 	$pconfig['peerid_type'] = $a_phase1[$p1index]['peerid_type'];
 	$pconfig['peerid_data'] = $a_phase1[$p1index]['peerid_data'];
 	$pconfig['encryption'] = $a_phase1[$p1index]['encryption'];
+	$pconfig['lifetime'] = $a_phase1[$p1index]['lifetime'];
 	$pconfig['rekey_time'] = $a_phase1[$p1index]['rekey_time'];
 	$pconfig['reauth_time'] = $a_phase1[$p1index]['reauth_time'];
-	$pconfig['over_time'] = $a_phase1[$p1index]['over_time'];
+	$pconfig['rand_time'] = $a_phase1[$p1index]['rand_time'];
 	$pconfig['authentication_method'] = $a_phase1[$p1index]['authentication_method'];
 
 	if (($pconfig['authentication_method'] == "pre_shared_key") ||
@@ -162,12 +163,12 @@ if (isset($p1index) && $a_phase1[$p1index]) {
 	$pconfig['myid_type'] = "myaddress";
 	$pconfig['peerid_type'] = "peeraddress";
 	$pconfig['authentication_method'] = "pre_shared_key";
-	$pconfig['reauth_time'] = "28800";
+	$pconfig['lifetime'] = "28800";
 	$pconfig['nat_traversal'] = 'on';
 	$pconfig['mobike'] = 'off';
 	$pconfig['prfselect_enable'] = false;
 	$pconfig['dpd_enable'] = true;
-	$pconfig['iketype'] = "ikev1";
+	$pconfig['iketype'] = "ikev2";
 
 	/* mobile client */
 	if ($_REQUEST['mobile']) {
@@ -273,14 +274,26 @@ if ($_POST['save']) {
 		$input_errors[] = gettext("Pre-Shared Key contains invalid characters.");
 	}
 
+	if (!empty($pconfig['lifetime'])) {
+		if (!is_numericint($pconfig['lifetime'])) {
+			$input_errors[] = gettext("Life Time must be an integer.");
+		}
+		if ((!empty($pconfig['rekey_time']) && ($pconfig['lifetime'] == $pconfig['rekey_time'])) ||
+		    (!empty($pconfig['reauth_time']) && ($pconfig['lifetime'] == $pconfig['reauth_time']))) {
+			$input_errors[] = gettext("Life Time cannot be set to the same value as Rekey Time or Reauth Time.");
+		}
+		if (max($pconfig['rekey_time'], $pconfig['reauth_time']) > $pconfig['lifetime']) {
+			$input_errors[] = gettext("Life Time must be larger than Rekey Time and Reauth Time.");
+		}
+	}
 	if (!empty($pconfig['rekey_time']) && !is_numericint($pconfig['rekey_time'])) {
 		$input_errors[] = gettext("Rekey Time must be an integer.");
 	}
 	if (!empty($pconfig['reauth_time']) && !is_numericint($pconfig['reauth_time'])) {
 		$input_errors[] = gettext("Reauth Time must be an integer.");
 	}
-	if (!empty($pconfig['over_time']) && !is_numericint($pconfig['over_time'])) {
-		$input_errors[] = gettext("Over Time must be an integer.");
+	if (!empty($pconfig['rand_time']) && !is_numericint($pconfig['rand_time'])) {
+		$input_errors[] = gettext("Rand Time must be an integer.");
 	}
 
 	if (!empty($pconfig['closeaction']) && !array_key_exists($pconfig['closeaction'], $ipsec_closeactions)) {
@@ -497,8 +510,17 @@ if ($_POST['save']) {
 
 	if (!empty($pconfig['certref'])) {
 		$errchkcert =& lookup_cert($pconfig['certref']);
-		if (is_array($errchkcert) && !cert_check_pkey_compatibility($errchkcert['prv'], 'IPsec')) {
-			$input_errors[] = gettext("The selected ECDSA certificate does not use a curve compatible with IKEv2");
+		if (is_array($errchkcert)) {
+			if (!cert_check_pkey_compatibility($errchkcert['prv'], 'IPsec')) {
+				$input_errors[] = gettext("The selected ECDSA certificate does not use a curve compatible with IKEv2");
+			}
+			if (preg_grep('/\*/', cert_get_sans($errchkcert['crt']))) {
+				$input_errors[] = gettext("The selected certificate contains wildcard entries, which are not supported.");
+			}
+			$purpose = cert_get_purpose($errchkcert['crt']);
+			if ($pconfig['mobile'] && ($purpose['server'] == 'No')) {
+				$input_errors[] = gettext("The selected certificate must be a Server Certificate for Mobile IPsec mode.");
+			}
 		}
 	}
 
@@ -515,7 +537,7 @@ if ($_POST['save']) {
 		$vtisubnet_spec = ipsec_vti($ph1ent, true);
 		if ((($pconfig['iketype'] != $a_phase1[$p1index]['iketype']) ||
 		    (isset($pconfig['splitconn']) != isset($a_phase1[$p1index]['splitconn']))) &&
-		    ($vtisubnet_spec || is_array($vtisubnet_spec))) {
+		    !empty($vtisubnet_spec) && is_array($vtisubnet_spec)) {
 			foreach ($a_vtimaps as $id => $vtimap) {
 				if ($vtimap['reqid'] == $ph1ent['ikeid']) {
 					unset($a_vtimaps[$id]);
@@ -567,9 +589,10 @@ if ($_POST['save']) {
 		$ph1ent['peerid_data'] = $pconfig['peerid_data'];
 
 		$ph1ent['encryption'] = $pconfig['encryption'];
+		$ph1ent['lifetime'] = $pconfig['lifetime'];
 		$ph1ent['rekey_time'] = $pconfig['rekey_time'];
 		$ph1ent['reauth_time'] = $pconfig['reauth_time'];
-		$ph1ent['over_time'] = $pconfig['over_time'];
+		$ph1ent['rand_time'] = $pconfig['rand_time'];
 		$ph1ent['pre-shared-key'] = $pconfig['pskey'];
 		$ph1ent['private-key'] = base64_encode($pconfig['privatekey']);
 		$ph1ent['certref'] = $pconfig['certref'];
@@ -1005,34 +1028,50 @@ $form->add($section);
 $section = new Form_Section('Expiration and Replacement');
 
 $section->addInput(new Form_Input(
+	'lifetime',
+	'Life Time',
+	'number',
+	$pconfig['lifetime'],
+	["placeholder" => ipsec_get_life_time($pconfig)]
+))->setHelp('Hard IKE SA life time, in seconds, after which the IKE SA will be expired. ' .
+		'Must be larger than Rekey Time and Reauth Time. ' .
+		'Cannot be set to the same value as Rekey Time or Reauth Time. ' .
+		'If left empty, defaults to 110% of whichever timer is higher (reauth or rekey)');
+
+$section->addInput(new Form_Input(
 	'rekey_time',
 	'Rekey Time',
 	'number',
 	$pconfig['rekey_time'],
-	['min' => 0]
+	['min' => 0, "placeholder" => ipsec_get_rekey_time($pconfig)]
 ))->setHelp('Time, in seconds, before an IKE SA establishes new keys. This works without interruption. ' .
+		'Cannot be set to the same value as Life Time. ' .
 		'Only supported by IKEv2, and is recommended for use with IKEv2. ' .
-		'Leave blank or enter a value of 0 to disable.');
+		'Leave blank to use a default value of 90% Life Time when using IKEv2. ' .
+		'Enter a value of 0 to disable.');
 
 $section->addInput(new Form_Input(
 	'reauth_time',
 	'Reauth Time',
 	'number',
 	$pconfig['reauth_time'],
-	['min' => 0]
+	['min' => 0, "placeholder" => ipsec_get_reauth_time($pconfig)]
 ))->setHelp('Time, in seconds, before an IKE SA is torn down and recreated from scratch, including authentication. ' .
 		'This can be disruptive unless both sides support make-before-break and overlapping IKE SA entries. ' .
-		'Supported by IKEv1 and IKEv2. Leave blank or enter a value of 0 to disable.');
+		'Cannot be set to the same value as Life Time. ' .
+		'Supported by IKEv1 and IKEv2. ' .
+		'Leave blank to use a default value of 90% Life Time when using IKEv1. ' .
+		'Enter a value of 0 to disable.');
 
 $section->addInput(new Form_Input(
-	'over_time',
-	'Over Time',
+	'rand_time',
+	'Rand Time',
 	'number',
-	$pconfig['over_time'],
-	['min' => 0]
-))->setHelp('Hard IKE SA life time, in seconds, after which the IKE SA will be expired. ' .
-		'This time is relative to reauthentication and rekey time. ' .
-		'If left empty, defaults to 10% of whichever timer is higher (reauth or rekey)');
+	$pconfig['rand_time'],
+	['min' => 0, "placeholder" => ipsec_get_rand_time($pconfig)]
+))->setHelp('A random value up to this amount will be subtracted from Rekey Time/Reauth Time to avoid simultaneous renegotiation. ' .
+		'If left empty, defaults to 10% of Life Time. ' .
+		'Enter 0 to disable randomness, but be aware that simultaneous renegotiation can lead to duplicate security associations.');
 
 $form->add($section);
 
@@ -1070,9 +1109,9 @@ $section->addInput(new Form_Select(
 $section->addInput(new Form_Checkbox(
 	'gw_duplicates',
 	'Gateway duplicates',
-	'Enable this to allow multiple phase 1 configurations with the same endpoint. ' .
-		'When enabled, pfSense does not manage routing to the remote gateway and traffic will follow the default route ' .
-		'without regard for the chosen interface. Static routes can override this behavior.',
+	sprintf(gettext('Enable this to allow multiple phase 1 configurations with the same endpoint. ' .
+	    'When enabled, %s does not manage routing to the remote gateway and traffic will follow the default route ' .
+	    'without regard for the chosen interface. Static routes can override this behavior.'), $g['product_label']),
 	$pconfig['gw_duplicates']
 ));
 

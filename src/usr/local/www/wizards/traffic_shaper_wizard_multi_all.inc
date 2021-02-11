@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,11 +123,6 @@ function step2_stepbeforeformdisplay() {
 
 	$fields = &$pkg['step'][1]['fields']['field'];
 
-	/*
-	unset($config['ezshaper']['step2']);
-	$config['ezshaper']['step2'] = array();
-	write_config();
-	*/
 	$fields = array();
 
 	for ($i = 0; $i < $numberoflocalinterfaces; $i++) {
@@ -1768,7 +1763,7 @@ function apply_all_chosen_items() {
 			}
 		}
 	}
-	write_config(gettext("Shaper configuration saved via pfSense traffic shaper wizard."));
+	write_config(gettext("Shaper configuration saved via traffic shaper wizard."));
 }
 
 function wizard_get_bandwidthtype_scale($type = "b") {

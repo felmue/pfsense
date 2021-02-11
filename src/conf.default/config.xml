@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <pfsense>
-	<version>20.8</version>
+	<version>21.4</version>
 	<lastchange/>
 	<system>
 		<optimization>normal</optimization>
 		<hostname>pfSense</hostname>
-		<domain>localdomain</domain>
+		<domain>home.arpa</domain>
 		<dnsserver/>
 		<dnsallowoverride/>
 		<group>
@@ -50,6 +50,7 @@
 		<bogons>
 			<interval>monthly</interval>
 		</bogons>
+		<hn_altq_enable></hn_altq_enable>
 	</system>
 	<interfaces>
 		<wan>

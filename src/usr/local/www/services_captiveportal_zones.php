@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,7 @@ if ($_POST['act'] == "del" && !empty($_POST['zone'])) {
 		unlink_if_exists("/var/db/captiveportal{$cpzone}.db");
 		unlink_if_exists("/var/db/captiveportal_usedmacs_{$cpzone}.db");
 		unlink_if_exists("/var/db/voucher_{$cpzone}_*.db");
-		write_config();
+		write_config("Captive portal zone deleted");
 	}
 	header("Location: services_captiveportal_zones.php");
 	exit;

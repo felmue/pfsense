@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2010 Seth Mos <seth.mos@dds.nl>
  * All rights reserved.
  *
@@ -123,7 +123,9 @@ $ramode_help = gettext('Select the Operating Mode for the Router Advertisement (
 	'<dt>' . gettext('Assisted') . 		 '</dt><dd>' . gettext('Will advertise this router with configuration through a DHCPv6 server and/or stateless autoconfig.') . '</dd>' .
 	'<dt>' . gettext('Stateless DHCP') . '</dt><dd>' . gettext('Will advertise this router with stateless autoconfig and other configuration information available via DHCPv6.') . '</dd>' .
 	'</dl>' .
-	gettext('It is not required to activate DHCPv6 server on pfSense when set to "Managed", "Assisted" or "Stateless DHCP", it can be another host on the network.') .
+	sprintf(gettext('It is not required to activate DHCPv6 server on %s ' .
+	    'when set to "Managed", "Assisted" or "Stateless DHCP", it can ' .
+	    'be another host on the network.'), $g['product_label']) .
 	'</div>';
 
 if ($_POST['save']) {
@@ -244,7 +246,7 @@ if ($_POST['save']) {
 			unset($config['dhcpdv6'][$if]['subnets']);
 		}
 
-		write_config();
+		write_config("Router Advertisements settings saved");
 		$changes_applied = true;
 		$retval = 0;
 		$retval |= services_radvd_configure();
@@ -470,7 +472,7 @@ $section->addInput(new Form_Checkbox(
 	'radvd-dns',
 	null,
 	'Provide DNS configuration via radvd',
-	($pconfig['radvd-dns'] == "enabled")
+	$pconfig['radvd-dns']
 ))->setHelp('Unchecking this box disables the RDNSS/DNSSL options in /var/etc/radvd.conf. ' .
 			'Use with caution, as the resulting behavior may violate some RFCs.');
 

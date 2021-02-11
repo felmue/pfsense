@@ -6,7 +6,7 @@
  * Copyright (c) 2008 Seth Mos
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally part of m0n0wall (http://m0n0.ch/wall)
@@ -54,11 +54,29 @@ if (!function_exists('compose_table_body_contents')) {
 			if (in_array($gname, $hiddengateways)) {
 				continue;
 			}
+			if (isset($gateway['inactive'])) {
+				$title = gettext("Gateway inactive, interface is missing");
+				$icon = 'fa-times-circle-o';
+			} elseif (isset($gateway['disabled'])) {
+				$icon = 'fa-ban';
+				$title = gettext("Gateway disabled");
+			} else {
+				$icon = 'fa-check-circle-o';
+				$title = gettext("Gateway enabled");
+			}
+			if (isset($gateway['isdefaultgw'])) {
+				$gtitle = gettext("Default gateway");
+			}
 
 			$gw_displayed = true;
 			$rtnstr .= "<tr>\n";
-			$rtnstr .= 	"<td>\n";
-			$rtnstr .= htmlspecialchars($gateway['name']) . "<br />";
+			$rtnstr .= 	"<td title='{$title}'><i class='fa {$icon}'></i></td>\n";
+			$rtnstr .= 	"<td title='{$gtitle}'>\n";
+			$rtnstr .= htmlspecialchars($gateway['name']);
+			if (isset($gateway['isdefaultgw'])) {
+				$rtnstr .= ' <i class="fa fa-globe"></i>';
+			}
+			$rtnstr .= "<br />";
 			$rtnstr .= '<div id="gateway' . $counter . '" style="display:inline"><b>';
 
 			$monitor_address = "";
@@ -222,6 +240,7 @@ $widgetkey_nodash = str_replace("-", "", $widgetkey);
 	<table class="table table-striped table-hover table-condensed">
 		<thead>
 			<tr>
+				<th></th>
 				<th><?=gettext("Name")?></th>
 				<th>RTT</th>
 				<th>RTTsd</th>

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2004 Dinesh Nair <dinesh@alphaque.com>
  * All rights reserved.
  *
@@ -82,7 +82,7 @@ if ($_POST['act'] == "del" && !empty($cpzone)) {
 		}
 
 		unset($a_allowedips[$_POST['id']]);
-		write_config();
+		write_config("Captive portal allowed IPs saved");
 		header("Location: services_captiveportal_ip.php?zone={$cpzone}");
 		exit;
 	}

@@ -4,7 +4,7 @@
  *
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2016 Electric Sheep Fencing
- * Copyright (c) 2016-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2016-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,6 +89,7 @@ class pfsense_xmlrpc_client {
 		while ($numberofruns < 2) {
 			$numberofruns++;
 
+			log_error(sprintf(gettext("Beginning XMLRPC sync data to %s."), $this->logurl));
 			$cli = XML_RPC2_Client::create($this->url, $options);
 			if (!is_object($cli)) {
 				$this->error = sprintf(gettext("A communications error occurred while attempting XMLRPC sync with %s (pfsense.%s)."), $this->log, $method);
@@ -138,6 +139,7 @@ class pfsense_xmlrpc_client {
 				file_notice($this->filenotice, $this->error, "Settings Sync", "");
 				continue;
 			}
+			log_error(sprintf(gettext("XMLRPC reload data success with %s (pfsense.{$method})."), $this->logurl));
 			return $resp;
 		}
 		return null;

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2005-2006 Jonathan De Graeve (jonathan.de.graeve@imelda.be)
  * Copyright (c) 2005-2006 Paul Taylor (paultaylor@winn-dixie.com)
  * All rights reserved.
@@ -120,7 +120,7 @@ if ($_POST['Submit']) {
 			$a_element[] = $element;
 			cpelements_sort();
 
-			write_config();
+			write_config("Captive portal file manager: file uploaded");
 			captiveportal_write_elements();
 			header("Location: services_captiveportal_filemanager.php?zone={$cpzone}");
 			exit;
@@ -130,7 +130,7 @@ if ($_POST['Submit']) {
 	@unlink("{$g['captiveportal_element_path']}/" . $a_element[$_POST['id']]['name']);
 	@unlink("{$g['captiveportal_path']}/" . $a_element[$_POST['id']]['name']);
 	unset($a_element[$_POST['id']]);
-	write_config();
+	write_config("Captive portal file manager: file deleted");
 	header("Location: services_captiveportal_filemanager.php?zone={$cpzone}");
 	exit;
 }

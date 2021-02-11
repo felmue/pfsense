@@ -6,7 +6,7 @@
  * Copyright (c) 2005-2006 Colin Smith (ethethlay@gmail.com)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,7 @@ function pkg_update($force = false) {
 function pkg_env($extra_env = array()) {
 	global $config, $g;
 
-	$user_agent = $g['product_name'] . '/' . $g['product_version'];
+	$user_agent = $g['product_label'] . '/' . $g['product_version'];
 	if (!isset($config['system']['do_not_send_uniqueid'])) {
 		$user_agent .= ':' . system_get_uniqueid();
 	}
@@ -1216,7 +1216,7 @@ function package_reinstall_all() {
 			file_notice(gettext("Package reinstall"),
 			    sprintf(gettext("Package %s does not exist in " .
 			    "current %s version and it has been removed."),
-			    $package, $g['product_name']));
+			    $package, $g['product_label']));
 			uninstall_package($package);
 		}
 	}
@@ -1312,8 +1312,8 @@ function get_base_pkg_name() {
 	global $g;
 
 	/* XXX: Use pkg annotation */
-	if (is_pkg_installed($g['product_name'] . '-base-' . $g['platform'])) {
-		return $g['product_name'] . '-base-' . $g['platform'];
+	if (is_pkg_installed($g['product_name'] . '-base-' . $g['product_name'])) {
+		return $g['product_name'] . '-base-' . $g['product_name'];
 	} else if (is_pkg_installed($g['product_name'] . '-base')) {
 		return $g['product_name'] . '-base';
 	}
@@ -1344,6 +1344,8 @@ function get_system_pkg_version($baseonly = false, $use_cache = true) {
 		if ($rc == 0 || $rc == 2) {
 			@file_put_contents($cache_file, $output);
 			@file_put_contents($rc_file, $rc);
+		} else {
+			return false;
 		}
 	}
 
@@ -1563,9 +1565,8 @@ function update_repos() {
 		// Compose a version string in JSON format
 		$os = php_uname('s');
 		$osver = php_uname('r');
-		$v = strtolower(php_uname('v'));
-		$ed =  (strpos($v, 'factory') !== false)
-		    ? "Factory" : "Community";
+		$ed =  (strpos($g['product_label'], 'Plus') !== false)
+		    ? "Plus" : "Community";
 		$pkglist = get_pkg_info("all", false, true);
 		$platform = system_identify_specific_platform();
 		$platformname = gettext('Unknown system');
@@ -1579,7 +1580,7 @@ function update_repos() {
 		    "{\"platform\":\"" . $platformname .
 		    "\",\"os\":\"" . $os .
 		    "\",\"osver\":\"" . $osver .
-		    "\",\"prod\":\"" . $g['product_name'] .
+		    "\",\"prod\":\"" . $g['product_label'] .
 		    "\",\"ver\":\"" . $g['product_version'] .
 		    "\",\"ed\":\"" . $ed .
 		    "\",\"pkgs\":[";
@@ -1613,7 +1614,7 @@ function update_repos() {
 		curl_setopt($ch, CURLOPT_HEADER, 0);
 		curl_setopt($ch, CURLOPT_VERBOSE, 0);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_name'] . '/' .
+		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_label'] . '/' .
 		    $g['product_version']);
 		curl_setopt($ch, CURLOPT_URL, $FQDN);
 		curl_setopt($ch, CURLOPT_POST, true);
@@ -1647,6 +1648,17 @@ function save_repo($json) {
 		file_put_contents($basename . "altabi", $repo['altabi']);
 		file_put_contents($basename . "name", $repo['name']);
 		file_put_contents($basename . "help", $repo['help']);
+
+		// Save fingerprint file
+		if (!empty($repo['fingerprint'])) {
+			if (!empty($repo['fpname'])) {
+				$fppath = "/usr/local/share/pfSense/keys/pkg/trusted/" . $repo['fpname'];
+			} else {
+				$fppath = "/usr/local/share/pfSense/keys/pkg/trusted/custom.pfsense.org";
+			}
+
+			file_put_contents($fppath, $repo['fingerprint']);
+		}
 	} else {
 		/*
 		 * If there was anything wrong with the custom repository

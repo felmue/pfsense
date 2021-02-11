@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -222,7 +222,7 @@ if ($tab == "port") {
 	$sectiontext = gettext('IP Alias Details');
 	$helptext = gettext('Paste in the aliases to ' .
 		'import separated by a carriage return. Common examples are lists of IPs, ' .
-		'networks, blacklists, etc. The list may contain IP addresses, with or without ' .
+		'networks, blocklists, etc. The list may contain IP addresses, with or without ' .
 		'CIDR prefix, IP ranges, blank lines (ignored) and an optional description after ' .
 		'each IP. e.g.:') .
 		'</span><ul><li>' .

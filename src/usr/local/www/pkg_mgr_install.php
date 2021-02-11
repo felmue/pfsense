@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2005 Colin Smith
  * All rights reserved.
  *
@@ -367,7 +367,7 @@ if (!isvalidpid($gui_pidfile) && !$confirmed && !$completed &&
 <?php
 			elseif ($firmwareupdate):
 ?>
-				<?=sprintf(gettext('Confirmation Required to update %s system.'), $g['product_name'])?>
+				<?=sprintf(gettext('Confirmation Required to update %s system.'), $g['product_label'])?>
 <?php
 			else:
 ?>

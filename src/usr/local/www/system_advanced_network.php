@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2008 Shrew Soft Inc
  * All rights reserved.
  *
@@ -191,7 +191,7 @@ if ($_POST) {
 		setup_microcode();
 
 		// Write out configuration (config.xml)
-		write_config();
+		write_config("Networking Advanced Settings saved");
 
 		// Set preferred protocol
 		prefer_ipv4_or_ipv6();

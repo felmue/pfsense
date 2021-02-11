@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -934,9 +934,6 @@ function restore_config_section($section_name, $new_contents) {
 	if ($xml['pfsense']) {
 		$xml = $xml['pfsense'];
 	}
-	else if ($xml['m0n0wall']) {
-		$xml = $xml['m0n0wall'];
-	}
 	if ($xml[$section_name]) {
 		$section_xml = $xml[$section_name];
 	} else {
@@ -1038,7 +1035,7 @@ function host_firmware_version($tocheck = "") {
 		"firmware" => array("version" => $g['product_version']),
 		"kernel"   => array("version" => $os_version),
 		"base"     => array("version" => $os_version),
-		"platform" => $g['platform'],
+		"platform" => $g['product_label'],
 		"config_version" => $config['version']
 	);
 }
@@ -2006,7 +2003,9 @@ function load_crypto() {
 		}
 		if (!is_module_loaded($enmod)) {
 			log_error(sprintf(gettext("Loading %s cryptographic accelerator module."), $enmod));
+			mute_kernel_msgs();
 			mwexec("/sbin/kldload " . escapeshellarg($enmod));
+			unmute_kernel_msgs();
 		}
 	}
 }
@@ -2077,9 +2076,9 @@ function download_file($url, $destination, $verify_ssl = true, $connect_timeout 
 	curl_setopt($ch, CURLOPT_HEADER, false);
 	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 	if (!isset($config['system']['do_not_send_uniqueid'])) {
-		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_name'] . '/' . $g['product_version'] . ':' . system_get_uniqueid());
+		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_label'] . '/' . $g['product_version'] . ':' . system_get_uniqueid());
 	} else {
-		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_name'] . '/' . $g['product_version']);
+		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_label'] . '/' . $g['product_version']);
 	}
 
 	if (!empty($config['system']['proxyurl'])) {
@@ -2133,9 +2132,9 @@ function download_file_with_progress_bar($url, $destination, $verify_ssl = true,
 	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $connect_timeout);
 	curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
 	if (!isset($config['system']['do_not_send_uniqueid'])) {
-		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_name'] . '/' . $g['product_version'] . ':' . system_get_uniqueid());
+		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_label'] . '/' . $g['product_version'] . ':' . system_get_uniqueid());
 	} else {
-		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_name'] . '/' . $g['product_version']);
+		curl_setopt($ch, CURLOPT_USERAGENT, $g['product_label'] . '/' . $g['product_version']);
 	}
 
 	if (!empty($config['system']['proxyurl'])) {
@@ -3422,7 +3421,7 @@ function get_pppoes_child_interfaces($ifpattern) {
 
 	exec("/sbin/ifconfig", $out, $ret);
 	foreach ($out as $line) {
-		if (preg_match("/^({$ifpattern}[0-9]+):/i", $line, $match)) {
+		if (preg_match("/^({$ifpattern}-[0-9]+):/i", $line, $match)) {
 			$if_arr[] = $match[1];
 		}
 	}

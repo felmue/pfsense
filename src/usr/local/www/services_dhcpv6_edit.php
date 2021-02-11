@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2010 Seth Mos <seth.mos@dds.nl>
  * All rights reserved.
  *
@@ -160,7 +160,7 @@ if ($_POST['save']) {
 		}
 		staticmaps_sort($if);
 
-		write_config();
+		write_config("DHCPv6 server static maps saved");
 
 		if (isset($config['dhcpdv6'][$if]['enable'])) {
 			mark_subsystem_dirty('staticmaps');

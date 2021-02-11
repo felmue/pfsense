@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2003-2004 Bob Zoller <bob@kludgebox.com>
  * All rights reserved.
  *
@@ -106,7 +106,7 @@ if ($_POST['save']) {
 
 		$retval = services_dnsmasq_configure();
 
-		write_config();
+		write_config("DNS Forwarder domain override saved");
 
 		header("Location: services_dnsmasq.php");
 		exit;
@@ -132,7 +132,7 @@ $section->addInput(new Form_Input(
 	'text',
 	$pconfig['domain']
 ))->setHelp('Domain to override (NOTE: this does not have to be a valid TLD!)%1$s' .
-			'e.g.: test or mycompany.localdomain or 1.168.192.in-addr.arpa', '<br />');
+			'e.g.: test or nas.home.arpa or mycompany.localdomain or 1.168.192.in-addr.arpa', '<br />');
 
 $section->addInput(new Form_IpAddress(
 	'ip',

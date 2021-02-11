@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2003-2004 Justin Ellison <justin@techadvise.com>
  * Copyright (c) 2010 Seth Mos
  * All rights reserved.
@@ -117,7 +117,7 @@ if ($_POST) {
 		$config['dhcrelay6']['agentoption'] = $_POST['agentoption'] ? true : false;
 		$config['dhcrelay6']['server'] = $svrlist;
 
-		write_config();
+		write_config("DHCPv6 Relay settings saved");
 
 		$changes_applied = true;
 		$retval = 0;
@@ -170,7 +170,7 @@ $section->addInput(new Form_Checkbox(
 	$pconfig['agentoption']
 ))->setHelp(
 	'If this is checked, the DHCPv6 relay will append the circuit ID (%s interface number) and the agent ID to the DHCPv6 request.',
-	$g['product_name']
+	$g['product_label']
 );
 
 function createDestinationServerInputGroup($value = null) {

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -111,7 +111,7 @@ if ($_POST['save']) {
 			$a_igmpproxy[] = $igmpentry;
 		}
 
-		write_config();
+		write_config("IGMP Proxy item saved");
 
 		mark_subsystem_dirty('igmpproxy');
 		header("Location: services_igmpproxy.php");

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -36,7 +36,7 @@ require_once("guiconfig.inc");
 require_once("functions.inc");
 require_once("filter.inc");
 require_once("shaper.inc");
-require_Once("alias-utils.inc");
+require_once("alias-utils.inc");
 
 if (isset($_POST['referer'])) {
 	$referer = $_POST['referer'];
@@ -115,7 +115,10 @@ if ($_POST['save']) {
 }
 
 if ($_REQUEST['exportaliases']) {
-	$expdata = array_map('alias_idn_to_utf8', explode(" ", $a_aliases[$id]['address']));
+	$expdata = explode(" ", $a_aliases[$id]['address']);
+	if ($a_aliases[$id]['type'] == 'host') {
+		$expdata = array_map('alias_idn_to_utf8', $expdata);
+	}
 	$expdata = implode("\n", $expdata);
 	$expdata .= "\n";
 	send_user_download('data', $expdata, "{$_POST['origname']}.txt");
@@ -332,6 +335,9 @@ while ($counter < count($addresses)) {
 			$address_subnet = "";
 		}
 	}
+	if ($pconfig['type'] == "host") {
+		$address = alias_idn_to_utf8($address);
+	}
 
 	$group = new Form_Group($counter == 0 ? $label_str[$tab]:'');
 	$group->addClass('repeatable');
@@ -339,7 +345,7 @@ while ($counter < count($addresses)) {
 	$group->add(new Form_IpAddress(
 		'address' . $counter,
 		'Address',
-		alias_idn_to_utf8($address),
+		$address,
 		'ALIASV4V6'
 	))->addMask('address_subnet' . $counter, $address_subnet)->setWidth(4)->setPattern($pattern_str[$tab]);
 

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -438,12 +438,14 @@ if ($_POST['save']) {
 
 			/* Validated above, so returned value is OK */
 			$logo_name = "captiveportal-logo." . image_type_to_extension(is_supported_image($_FILES['logo-img']['tmp_name']));
-			for ($i = 0; $i < count($a_cp[$cpzone]['element']); $i++) {
-				if (strpos($a_cp[$cpzone]['element'][$i]['name'], "captiveportal-logo.") !== false){
-					// remove old image before replacing it.
-					@unlink("{$g['captiveportal_element_path']}/" . $a_cp[$cpzone]['element'][$i]['name']);
-					@unlink("{$g['captiveportal_path']}/" . $a_cp[$cpzone]['element'][$i]['name']);
-					unset($a_cp[$cpzone]['element'][$i]);
+			if (is_array($a_cp[$cpzone]['element']) && !empty($a_cp[$cpzone]['element'])) {
+				for ($i = 0; $i < count($a_cp[$cpzone]['element']); $i++) {
+					if (strpos($a_cp[$cpzone]['element'][$i]['name'], "captiveportal-logo.") !== false){
+						// remove old image before replacing it.
+						@unlink("{$g['captiveportal_element_path']}/" . $a_cp[$cpzone]['element'][$i]['name']);
+						@unlink("{$g['captiveportal_path']}/" . $a_cp[$cpzone]['element'][$i]['name']);
+						unset($a_cp[$cpzone]['element'][$i]);
+					}
 				}
 			}
 			$element = array();
@@ -460,12 +462,14 @@ if ($_POST['save']) {
 			/* Validated above, so returned value is OK */
 			$background_name = "captiveportal-background." . image_type_to_extension(is_supported_image($_FILES['background-img']['tmp_name']));
 			// is there already a file with that name?
-			for ($i = 0; $i < count($a_cp[$cpzone]['element']); $i++) {
-				if (strpos($a_cp[$cpzone]['element'][$i]['name'], "captiveportal-background.") !== false){
-					// remove old image and replace it.
-					@unlink("{$g['captiveportal_element_path']}/" . $a_cp[$cpzone]['element'][$i]['name']);
-					@unlink("{$g['captiveportal_path']}/" . $a_cp[$cpzone]['element'][$i]['name']);
-					unset($a_cp[$cpzone]['element'][$i]);
+			if (is_array($a_cp[$cpzone]['element']) && !empty($a_cp[$cpzone]['element'])) {
+				for ($i = 0; $i < count($a_cp[$cpzone]['element']); $i++) {
+					if (strpos($a_cp[$cpzone]['element'][$i]['name'], "captiveportal-background.") !== false){
+						// remove old image and replace it.
+						@unlink("{$g['captiveportal_element_path']}/" . $a_cp[$cpzone]['element'][$i]['name']);
+						@unlink("{$g['captiveportal_path']}/" . $a_cp[$cpzone]['element'][$i]['name']);
+						unset($a_cp[$cpzone]['element'][$i]);
+					}
 				}
 			}
 
@@ -480,7 +484,7 @@ if ($_POST['save']) {
 			move_uploaded_file( $_FILES['background-img']['tmp_name'], $target);
 		}
 
-		write_config();
+		write_config("Captive portal settings saved");
 
 		captiveportal_configure_zone($newcp);
 		unset($newcp);
@@ -642,14 +646,14 @@ if (captiveportal_xmlrpc_sync_get_details($tmpsyncip, $tmpport, $tmpusername, $t
 	'Preserve users database',
 	'Preserve connected users across reboot',
 	'yes'
-	))->setDisabled()->setHelp("If enabled, connected users won't be disconnected during a pfSense reboot. This setting is not editable because High Availability is enabled.");
+	))->setDisabled()->setHelp("If enabled, connected users won't be disconnected during a %s reboot. This setting is not editable because High Availability is enabled.", $g['product_label']);
 } else {
 	$section->addInput(new Form_Checkbox(
 	'preservedb',
 	'Preserve users database',
 	'Preserve connected users across reboot',
 	$pconfig['preservedb']
-	))->setHelp("If enabled, connected users won't be disconnected during a pfSense reboot.");
+	))->setHelp("If enabled, connected users won't be disconnected during a %s reboot.", $g['product_label']);
 }
 
 $section->addInput(new Form_Select(
@@ -670,8 +674,8 @@ $section->addInput(new Form_Checkbox(
 	'Disable MAC filtering',
 	$pconfig['nomacfilter']
 ))->setHelp('If enabled no attempts will be made to ensure that the MAC address of clients stays the same while they are logged in. ' .
-			'This is required when the MAC address of the client cannot be determined (usually because there are routers between pfSense and the clients). ' .
-			'If this is enabled, RADIUS MAC authentication cannot be used.');
+			'This is required when the MAC address of the client cannot be determined (usually because there are routers between %s and the clients). ' .
+			'If this is enabled, RADIUS MAC authentication cannot be used.', $g['product_label']);
 
 $section->addInput(new Form_Checkbox(
 	'passthrumacadd',
@@ -1127,7 +1131,8 @@ $section->addInput(new Form_Input(
 	$pconfig['httpsname']
 ))->setHelp('This name will be used in the form action for the HTTPS POST and should match the Common Name (CN) in the certificate ' .
 			'(otherwise, the client browser will most likely display a security warning). ' .
-			'Make sure captive portal clients can resolve this name in DNS and verify on the client that the IP resolves to the correct interface IP on pfSense.');
+			'Make sure captive portal clients can resolve this name in DNS and verify on the client that the IP resolves to the correct interface IP on %s.',
+			$g['product_label']);
 
 $section->addInput(new Form_Select(
 	'certref',

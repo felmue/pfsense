@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -115,7 +115,8 @@ function find_alias_reference($section, $field, $origname, &$is_alias_referenced
 					break;
 				}
 			}
-			if ($fieldfound && $fieldref == $origname) {
+			/* explode() alias address string, see https://redmine.pfsense.org/issues/11372 */
+			if ($fieldfound && in_array($origname, explode(' ', $fieldref))) {
 				$is_alias_referenced = true;
 				if (is_array($item)) {
 					$referenced_by = $item['descr'];
@@ -231,7 +232,6 @@ function saveAlias($post, $id) {
 		/* item is a url table type */
 		if ($post['address0']) {
 			/* fetch down and add in */
-			$post['address0'] = trim(alias_idn_to_ascii($post['address0']));
 			$address[] = $post['address0'];
 			$alias['url'] = $post['address0'];
 			$alias['updatefreq'] = $post['address_subnet0'] ? $post['address_subnet0'] : 7;
@@ -258,7 +258,6 @@ function saveAlias($post, $id) {
 
 		/* item is a url type */
 		for ($x = 0; $x < $max_alias_addresses - 1; $x++) {
-			$post['address' . $x] = trim(alias_idn_to_ascii($post['address' . $x]));
 			if ($post['address' . $x]) {
 				/* fetch down and add in */
 				$temp_filename = tempnam("{$g['tmp_path']}/", "alias_import");

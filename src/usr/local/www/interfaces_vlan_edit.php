@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -34,6 +34,8 @@
 
 require_once("guiconfig.inc");
 
+global $config;
+
 init_config_arr(array('vlans', 'vlan'));
 $a_vlans = &$config['vlans']['vlan'];
 
@@ -47,6 +49,15 @@ foreach ($lagglist as $laggif => $lagg) {
 		if (isset($portlist[$lagm])) {
 			unset($portlist[$lagm]);
 		}
+	}
+}
+
+/* Do not allow WireGuard interfaces to be used for VLANs
+ * https://redmine.pfsense.org/issues/11277 */
+init_config_arr(array('wireguard', 'tunnel'));
+foreach ($config['wireguard']['tunnel'] as $tunnel) {
+	if (isset($portlist[$tunnel['name']])) {
+		unset($portlist[$tunnel['name']]);
 	}
 }
 
@@ -142,7 +153,7 @@ if ($_POST['save']) {
 				$a_vlans[] = $vlan;
 			}
 
-			write_config();
+			write_config("VLAN interface added");
 
 			if ($confif != "") {
 				interface_configure($confif);

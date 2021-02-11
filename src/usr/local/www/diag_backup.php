@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -100,6 +100,7 @@ function build_area_list($showall) {
 		"snmpd" => gettext("SNMP Server"),
 		"shaper" => gettext("Traffic Shaper"),
 		"vlans" => gettext("VLANS"),
+		"wireguard" => gettext("WireGuard VPN Tunnels"),
 		"wol" => gettext("Wake-on-LAN")
 		);
 
@@ -176,7 +177,7 @@ $section->addInput(new Form_Checkbox(
 	'backupdata',
 	'Include extra data',
 	'Backup extra data.',
-	true
+	false
 ))->setHelp('Backup extra data files for some services.%1$s' .
 	    '%2$s%3$sCaptive Portal - Captive Portal DB and UsedMACs DB%4$s' .
 	    '%3$sCaptive Portal Vouchers - Used Vouchers DB%4$s' .
@@ -215,7 +216,7 @@ $section = new Form_Section('Restore Backup');
 
 $section->addInput(new Form_StaticText(
 	null,
-	sprintf(gettext("Open a %s configuration XML file and click the button below to restore the configuration."), $g['product_name'])
+	sprintf(gettext("Open a %s configuration XML file and click the button below to restore the configuration."), $g['product_label'])
 ));
 
 $section->addInput(new Form_Select(

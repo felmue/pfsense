@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -107,14 +107,6 @@ if (isset($config['gres']['gre']) && is_array($config['gres']['gre']) && count($
 	}
 }
 
-/* add VXLAN interfaces */
-if (isset($config['vxlans']['vxlan']) && is_array($config['vxlans']['vxlan']) && count($config['vxlans']['vxlan'])) {
-	foreach ($config['vxlans']['vxlan'] as $gre) {
-		$portlist[$gre['vxlanif']] = $gre;
-		$portlist[$gre['vxlanif']]['isvxlan'] = true;
-	}
-}
-
 /* add LAGG interfaces */
 if (isset($config['laggs']['lagg']) && is_array($config['laggs']['lagg']) && count($config['laggs']['lagg'])) {
 	foreach ($config['laggs']['lagg'] as $lagg) {
@@ -185,6 +177,14 @@ foreach ($ipsec_descrs as $ifname => $ifdescr) {
 	$portlist[$ifname] = array('descr' => $ifdescr);
 }
 
+global $wg_descrs;
+init_config_arr(array('wireguard', 'tunnel'));
+foreach ($config['wireguard']['tunnel'] as $tunnel) {
+	if (isset($tunnel['enabled']) && ($tunnel['enabled'] == 'yes')) {
+		$portlist[$tunnel['name']] = array('descr' => $tunnel['descr']);
+		$wg_descrs[$tunnel['name']] = $tunnel['descr'];
+	}
+}
 
 $ifdescrs = interface_assign_description_fast($portlist,$friendlyifnames);
 
@@ -227,7 +227,7 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 		/* XXX: Do not remove this. */
 		unlink_if_exists("{$g['tmp_path']}/config.cache");
 
-		write_config();
+		write_config("New interface assigned");
 
 		$action_msg = gettext("Interface has been added.");
 		$class = "success";
@@ -238,7 +238,7 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 		system_reboot();
 		$rebootingnow = true;
 	} else {
-		write_config();
+		write_config("Interfaces assignement settings changed");
 
 		$changes_applied = true;
 		$retval = 0;
@@ -324,8 +324,8 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 						$config['interfaces'][$ifname]['ipaddr'] = $portlist[$ifport]['type'];
 					}
 
-					if ((substr($ifport, 0, 3) == 'gre') || (substr($ifport, 0, 3) == 'gif') || 
-					    (substr($ifport, 0, 5) == 'vxlan')) {
+					if ((substr($ifport, 0, 3) == 'gre') ||
+					    (substr($ifport, 0, 5) == 'gif')) {
 						unset($config['interfaces'][$ifname]['ipaddr']);
 						unset($config['interfaces'][$ifname]['subnet']);
 						unset($config['interfaces'][$ifname]['ipaddrv6']);
@@ -356,7 +356,7 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 				}
 			}
 		}
-		write_config();
+		write_config("Interfaces assignement settings changed");
 
 		enable_rrd_graphing();
 	}
@@ -377,8 +377,6 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 			$input_errors[] = gettext("The interface is part of a gre tunnel. Please delete the tunnel to continue");
 		} else if (link_interface_to_tunnelif($id, 'gif')) {
 			$input_errors[] = gettext("The interface is part of a gif tunnel. Please delete the tunnel to continue");
-		} else if (link_interface_to_tunnelif($id, 'vxlan')) {
-			$input_errors[] = gettext("The interface is part of a vxlan tunnel. Please delete the tunnel to continue");
 		} else if (interface_has_queue($id)) {
 			$input_errors[] = gettext("The interface has a traffic shaper queue configured.\nPlease remove all queues on the interface to continue.");
 		} else {
@@ -413,7 +411,7 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 				}
 			}
 
-			write_config();
+			write_config("Interface assignement deleted");
 
 			/* If we are in firewall/routing mode (not single interface)
 			 * then ensure that we are not running DHCP on the wan which
@@ -485,7 +483,6 @@ $tab_array[] = array(gettext("QinQs"), false, "interfaces_qinq.php");
 $tab_array[] = array(gettext("PPPs"), false, "interfaces_ppps.php");
 $tab_array[] = array(gettext("GREs"), false, "interfaces_gre.php");
 $tab_array[] = array(gettext("GIFs"), false, "interfaces_gif.php");
-$tab_array[] = array(gettext("VXLANs"), false, "interfaces_vxlan.php");
 $tab_array[] = array(gettext("Bridges"), false, "interfaces_bridge.php");
 $tab_array[] = array(gettext("LAGGs"), false, "interfaces_lagg.php");
 display_top_tabs($tab_array);

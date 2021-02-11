@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,6 +51,12 @@ $interface_list_disabled = get_configured_interface_with_descr(true);
 $ifname_allowed_chars_text = gettext("Only letters (A-Z), digits (0-9) and '_' are allowed.");
 $ifname_no_digit_text = gettext("The group name cannot end with a digit.");
 
+/* hide VTI interfaces, see https://redmine.pfsense.org/issues/11134 */
+foreach ($interface_list as $if => $ifdescr) {
+	if (substr(get_real_interface($if), 0, 5) == "ipsec") {
+		unset($interface_list[$if]);
+	}
+}
 
 if ($_POST['save']) {
 	unset($input_errors);
@@ -179,7 +185,7 @@ if ($_POST['save']) {
 			$a_ifgroups[] = $ifgroupentry;
 		}
 
-		write_config();
+		write_config("Interface Group added");
 		interface_group_setup($ifgroupentry);
 
 		header("Location: interfaces_groups.php");

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2010 Erik Fonnesbeck
  * All rights reserved.
  *
@@ -56,7 +56,7 @@ if ($_POST['act'] == "del") {
 		pfSense_interface_destroy($a_clones[$_POST['id']]['cloneif']);
 		unset($a_clones[$_POST['id']]);
 
-		write_config();
+		write_config("Wireless interface deleted");
 
 		header("Location: interfaces_wireless.php");
 		exit;
@@ -81,7 +81,6 @@ $tab_array[] = array(gettext("QinQs"), false, "interfaces_qinq.php");
 $tab_array[] = array(gettext("PPPs"), false, "interfaces_ppps.php");
 $tab_array[] = array(gettext("GREs"), false, "interfaces_gre.php");
 $tab_array[] = array(gettext("GIFs"), false, "interfaces_gif.php");
-$tab_array[] = array(gettext("VXLANs"), false, "interfaces_vxlan.php");
 $tab_array[] = array(gettext("Bridges"), false, "interfaces_bridge.php");
 $tab_array[] = array(gettext("LAGGs"), false, "interfaces_lagg.php");
 display_top_tabs($tab_array);

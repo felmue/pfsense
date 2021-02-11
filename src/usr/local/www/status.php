@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://neon1.net/m0n0wall)
@@ -65,16 +65,16 @@ $filtered_tags = array(
 	'accountkey', 'authorizedkeys', 'auth_pass',
 	'auth_server_shared_secret', 'auth_server_shared_secret2', 'auth_user',
 	'barnyard_dbpwd', 'bcrypt-hash', 'cert_key', 'community', 'crypto_password',
-	'crypto_password2', 'dns_nsupdatensupdate_key', 'encryption_password',
+	'crypto_password2', 'dns_nsupdatensupdate_key', 'ddnsdomainkey', 'encryption_password',
 	'etpro_code', 'etprocode', 'gold_encryption_password', 'gold_password',
 	'influx_pass', 'ipsecpsk', 'ldap_bindpw', 'ldapbindpass', 'ldap_pass',
 	'lighttpd_ls_password', 'maxmind_geoipdb_key', 'maxmind_key', 'md5-hash',
 	'md5password', 'md5sigkey', 'md5sigpass', 'nt-hash', 'oinkcode',
 	'oinkmastercode', 'passphrase', 'password', 'passwordagain',
-	'pkcs11pin', 'postgresqlpasswordenc', 'pre-shared-key',	'proxypass',
+	'pkcs11pin', 'postgresqlpasswordenc', 'presharedkey', 'pre-shared-key', 'privatekey', 'proxypass',
 	'proxy_passwd', 'proxyuser', 'proxy_user', 'prv', 'radius_secret',
-	'redis_password', 'redis_passwordagain', 'rocommunity',	'secret', 'secret2', 'serverauthkey',
-	'shared_key', 'stats_password', 'tls', 'tlspskidentity', 'tlspskfile',
+	'redis_password', 'redis_passwordagain', 'rocommunity',	'secret', 'secret2', 'securiteinfo_id',
+       	'serverauthkey', 'shared_key', 'stats_password', 'tls', 'tlspskidentity', 'tlspskfile',
 	'varclientpasswordinput', 'varclientsharedsecret', 'varsqlconfpassword',
 	'varsqlconf2password', 	'varsyncpassword', 'varmodulesldappassword', 'varmodulesldap2password',
 	'varusersmotpinitsecret', 'varusersmotppin', 'varuserspassword', 'webrootftppassword'
@@ -201,7 +201,7 @@ function execCmds() {
 function get_firewall_info() {
 	global $g, $output_path;
 	/* Firewall Platform/Serial */
-	$firewall_info = "Product Name: " . htmlspecialchars($g['product_name']);
+	$firewall_info = "Product Name: " . htmlspecialchars($g['product_label']);
 	$platform = system_identify_specific_platform();
 	if (!empty($platform['descr'])) {
 		$firewall_info .= "<br/>Platform: " . htmlspecialchars($platform['descr']);
@@ -228,7 +228,7 @@ function get_firewall_info() {
 	}
 
 	if (!empty($g['product_version_string'])) {
-		$firewall_info .= "<br/>" . htmlspecialchars($g['product_name']) .
+		$firewall_info .= "<br/>" . htmlspecialchars($g['product_label']) .
 		    " version: " . htmlspecialchars($g['product_version_string']);
 	}
 
@@ -276,7 +276,7 @@ if (function_exists("system_get_thothid") &&
 }
 
 defCmdT("OS-Uptime", "/usr/bin/uptime");
-defCmdT("Network-Interfaces", "/sbin/ifconfig -vvvvvam");
+defCmdT("Network-Interfaces", '/sbin/ifconfig -vvvvvam | /usr/bin/sed "s/\([[:blank:]]private-key: \).*/\1<redacted>/"');
 defCmdT("Network-Interface Statistics", "/usr/bin/netstat -nWi");
 defCmdT("Process-Top Usage", "/usr/bin/top | /usr/bin/head -n5");
 defCmdT("Process-List", "/bin/ps xauwwd");
@@ -331,10 +331,10 @@ defCmdT("DNS-Resolver Access Lists", "/bin/cat /var/unbound/access_lists.conf");
 defCmdT("DNS-Resolver Configuration", "/bin/cat /var/unbound/unbound.conf");
 defCmdT("DNS-Resolver Domain Overrides", "/bin/cat /var/unbound/domainoverrides.conf");
 defCmdT("DNS-Resolver Host Overrides", "/bin/cat /var/unbound/host_entries.conf");
-defCmdT("DHCP-IPv4 Configuration", "/bin/cat /var/dhcpd/etc/dhcpd.conf");
-defCmdT("DHCP-IPv6-Configuration", "/bin/cat /var/dhcpd/etc/dhcpdv6.conf");
+defCmdT("DHCP-IPv4 Configuration", '/usr/bin/sed "s/\([[:blank:]]secret \).*/\1<redacted>/" /var/dhcpd/etc/dhcpd.conf');
+defCmdT("DHCP-IPv6-Configuration", '/usr/bin/sed "s/\([[:blank:]]secret \).*/\1<redacted>/" /var/dhcpd/etc/dhcpdv6.conf');
 defCmdT("IPsec-strongSwan Configuration", '/usr/bin/sed "s/\([[:blank:]]secret = \).*/\1<redacted>/" /var/etc/ipsec/strongswan.conf');
-defCmdT("IPsec-Configuration", '/usr/bin/sed "s/\([[:blank:]]secret = \).*/\1<redacted>/" /var/etc/ipsec/swanctl.conf');
+defCmdT("IPsec-Configuration", '/usr/bin/sed -E "s/([[:blank:]]*(secret|pin) = ).*/\1<redacted>/" /var/etc/ipsec/swanctl.conf');
 defCmdT("IPsec-Status-Statistics", "/usr/local/sbin/swanctl --stats --pretty");
 defCmdT("IPsec-Status-Connections", "/usr/local/sbin/swanctl --list-conns");
 defCmdT("IPsec-Status-Active SAs", "/usr/local/sbin/swanctl --list-sas");
@@ -368,6 +368,17 @@ if (is_dir("/var/etc/openvpn")) {
 		defCmdT("OpenVPN-Configuration {$ovpnfile[4]}", "/bin/cat " . escapeshellarg($file));
 	}
 }
+
+if (is_dir("/etc/wg")) {
+	foreach(glob('/etc/wg/*.conf') as $file) {
+		$wgfile = explode('/', $file);
+		if (!count($wgfile) || (count($wgfile) < 4)) {
+			continue;
+		}
+		defCmdT("WireGuard-Configuration File {$wgfile[3]}", '/usr/bin/sed -E "s/([[:blank:]]*((PrivateKey|PresharedKey) = )).*/\1<redacted>/" ' . escapeshellarg($file) );
+	}
+}
+defCmdT("WireGuard-Active Configuration", "/usr/local/bin/wg");
 
 if (file_exists("/var/etc/l2tp-vpn/mpd.conf")) {
 	defCmdT("L2TP-Configuration", '/usr/bin/sed -E "s/([[:blank:]](secret|radius server .*) ).*/\1<redacted>/" /var/etc/l2tp-vpn/mpd.conf');
@@ -437,7 +448,7 @@ defCmdT("Disk-GEOM Mirror Status", "/sbin/gmirror status");
 exec("/bin/date", $dateOutput, $dateStatus);
 $currentDate = $dateOutput[0];
 
-$pgtitle = array($g['product_name'], "Status");
+$pgtitle = array($g['product_label'], "Status");
 
 if (!$console):
 include("head.inc"); ?>

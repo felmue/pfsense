@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2008 Shrew Soft Inc
  * All rights reserved.
  *
@@ -784,7 +784,7 @@ if (in_array($act, array('new', 'edit')) || (($_POST['save'] == gettext("Save"))
 		'keypaste',
 		'Key data',
 		$pconfig['keypaste']
-	))->setHelp('Optionally paste a private key here. The key will be associated with the newly signed certificate in pfSense');
+	))->setHelp('Optionally paste a private key here. The key will be associated with the newly signed certificate in %1$s', $g['product_label']);
 
 	$section->addInput(new Form_Input(
 		'csrsign_lifetime',
@@ -1549,7 +1549,7 @@ events.push(function() {
 		setRequired('cert', true);
 		hideInput('key', false);
 		setRequired('key', true);
-	} else {
+	} else if ($('input[name=import_type]:checked').val() == 'pkcs12') {
 		hideInput('cert', true);
 		setRequired('cert', false);
 		hideInput('key', true);

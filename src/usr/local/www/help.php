@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -235,6 +235,8 @@ $helppages = array(
 	'vpn_openvpn_export.php' => 'https://docs.netgate.com/pfsense/en/latest/vpn/openvpn/index.html',
 	'vpn_openvpn_export_shared.php' => 'https://docs.netgate.com/pfsense/en/latest/vpn/openvpn/index.html',
 	'vpn_openvpn_server.php' => 'https://docs.netgate.com/pfsense/en/latest/vpn/openvpn/index.html',
+	'vpn_wg.php' => 'https://docs.netgate.com/pfsense/en/latest/vpn/wireguard/index.html',
+	'vpn_wg_edit.php' => 'https://docs.netgate.com/pfsense/en/latest/vpn/wireguard/index.html',
 
 	/* Packages from here on down. Not checked as strictly. Pages may not yet exist. */
 	'acme/acme_accountkeys_edit.php' => 'https://docs.netgate.com/pfsense/en/latest/packages/acme/index.html',

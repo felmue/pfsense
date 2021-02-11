@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally part of m0n0wall (http://m0n0.ch/wall)
@@ -54,7 +54,9 @@ function get_default_captive_portal_html() {
 	$bg_src = "linear-gradient(135deg, #1475CF, #2B40B5, #1C1275)";
 	// Check if customlogo is set and if the element exists
 	// Check if the image is in the directory
-	if (isset($config['captiveportal'][$cpzone]['customlogo'])) {
+	if (isset($config['captiveportal'][$cpzone]['customlogo']) &&
+	    is_array($config['captiveportal'][$cpzone]['element']) &&
+	    !empty($config['captiveportal'][$cpzone]['element'])) {
 		foreach ($config['captiveportal'][$cpzone]['element'] as $element) {
 			if (strpos($element['name'], "captiveportal-logo.") !== false) {
 				if (file_exists("{$g['captiveportal_path']}/{$element['name']}")) {
@@ -65,7 +67,9 @@ function get_default_captive_portal_html() {
 		}
 	}
 	// check if custombg is set and if the element exists
-	if (isset($config['captiveportal'][$cpzone]['custombg'])) {
+	if (isset($config['captiveportal'][$cpzone]['custombg']) &&
+	    is_array($config['captiveportal'][$cpzone]['element']) &&
+	    !empty($config['captiveportal'][$cpzone]['element'])) { 
 		foreach ($config['captiveportal'][$cpzone]['element'] as $element) {
 			if (strpos($element['name'],"captiveportal-background.") !== false) {
 				if( file_exists("{$g['captiveportal_path']}/{$element['name']}")) {
@@ -142,7 +146,7 @@ EOD;
 			$translated_text = gettext("Voucher Code");
 			$htmltext .= <<<EOD
 				<br  /><br  />
-				<input name="auth_voucher" type="text" placeholder="{$translated_text}">
+				<input name="auth_voucher" type="text" placeholder="{$translated_text}" value="#VOUCHER#">
 EOD;
 		}
 	}
@@ -1160,8 +1164,8 @@ function captiveportal_disconnect($dbent, $term_cause = 1, $stop_time = null, $c
 			    IP_FW_TABLE_XDEL, "{$dbent[2]}/{$clientsn}");
 		}
 		/* XXX: Redundant?! Ensure all pf(4) states are killed. */
-		$_gb = @pfSense_kill_states($dbent[2]);
-		$_gb = @pfSense_kill_srcstates($dbent[2]);
+		$_gb = @pfSense_kill_states(utf8_encode($dbent[2]));
+		$_gb = @pfSense_kill_srcstates(utf8_encode($dbent[2]));
 	}
 
 	/*
@@ -2250,7 +2254,7 @@ function portal_hostname_from_client_ip($cliip) {
 
 /* functions move from index.php */
 
-function portal_reply_page($redirurl, $type = null, $message = null, $clientmac = null, $clientip = null, $username = null, $password = null) {
+function portal_reply_page($redirurl, $type = null, $message = null, $clientmac = null, $clientip = null, $username = null, $password = null, $voucher = null) {
 	global $g, $config, $cpzone;
 
 	/* Get captive portal layout */
@@ -2293,6 +2297,7 @@ function portal_reply_page($redirurl, $type = null, $message = null, $clientmac 
 	$htmltext = str_replace("#CLIENT_IP#", htmlspecialchars($clientip), $htmltext);
 	$htmltext = str_replace("#USERNAME#", htmlspecialchars($username), $htmltext);
 	$htmltext = str_replace("#PASSWORD#", htmlspecialchars($password), $htmltext);
+	$htmltext = str_replace("#VOUCHER#", htmlspecialchars($voucher), $htmltext);
 
 	echo $htmltext;
 }
@@ -2401,12 +2406,6 @@ function portal_allow($clientip, $clientmac, $username, $password = null, $redir
 	$unsetindexes = array();
 
 	foreach ($cpdb as $cpentry) {
-		captiveportal_logportalauth($cpentry[4], $cpentry[3], $cpentry[2], "Entering for each loop $username = {$username}");	
-		if (isset($config['captiveportal'][$cpzone]['noconcurrentlogins'])) {
-			captiveportal_logportalauth($cpentry[4], $cpentry[3], $cpentry[2], "config['captiveportal'][$cpzone]['noconcurrentlogins'] exists = set");	
-		} else {
-			captiveportal_logportalauth($cpentry[4], $cpentry[3], $cpentry[2], "config['captiveportal'][$cpzone]['noconcurrentlogins'] does not exists = NOT set");
-		}
 		/* on the same ip */
 		if ($cpentry[2] == $clientip) {
 			if (isset($config['captiveportal'][$cpzone]['nomacfilter']) || $cpentry[3] == $clientmac) {

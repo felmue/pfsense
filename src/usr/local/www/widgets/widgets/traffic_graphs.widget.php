@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2007 Scott Dale
  * Copyright (c) 2004-2005 T. Lechat <dev@lechat.org>
  * Copyright (c) 2004-2005 Jonathan Watt <jwatt@jwatt.org>.
@@ -94,14 +94,16 @@ if (isset($user_settings['widgets']['traffic_graphs']['size'])) {
 	$tg_size = 1;
 }
 
-if (isset($user_settings['widgets']['traffic_graphs']['invert'])) {
-	$tg_invert = (boolean)$user_settings['widgets']['traffic_graphs']['invert'];
+if (isset($user_settings['widgets']['traffic_graphs']['invert']) &&
+    ($user_settings['widgets']['traffic_graphs']['invert'] == 'false')) {
+	$tg_invert = false;
 } else {
 	$tg_invert = true;
 }
 
-if (isset($user_settings['widgets']['traffic_graphs']['backgroundupdate'])) {
-	$tg_backgroundupdate = (boolean)$user_settings['widgets']['traffic_graphs']['backgroundupdate'];
+if (isset($user_settings['widgets']['traffic_graphs']['backgroundupdate']) &&
+    ($user_settings['widgets']['traffic_graphs']['backgroundupdate'] == 'false')) {
+	$tg_backgroundupdate = false;
 } else {
 	$tg_backgroundupdate = true;
 }

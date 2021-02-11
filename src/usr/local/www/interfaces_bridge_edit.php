@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -217,6 +217,10 @@ if ($_POST['save']) {
 			if (is_array($_POST['members']) && !in_array($ifstp, $_POST['members'])) {
 				$input_errors[] = sprintf(gettext('STP interface (%s) is not part of the bridge. Remove the STP interface to continue.'), $ifacelist[$ifstp]);
 			}
+			$realif = get_real_interface($ifstp);
+			if (is_pseudo_interface($realif) || interface_is_vlan($realif)) {
+				$input_errors[] = sprintf(gettext('STP interface (%s) must not be a pseudo-interface or a VLAN interface.'), $ifacelist[$ifstp]);
+			}
 		}
 		$pconfig['stp'] = implode(',', $_POST['stp']);
 	}
@@ -299,6 +303,7 @@ if ($_POST['save']) {
 		$bridge['proto'] = $_POST['proto'];
 		$bridge['holdcnt'] = $_POST['holdcnt'];
 		$i = 0;
+		$j = 0;
 		$ifpriority = "";
 		$ifpathcost = "";
 
@@ -312,14 +317,15 @@ if ($_POST['save']) {
 					$ifpriority .= ",";
 				}
 				$ifpriority .= $ifn.":".$_POST[$ifn];
+				$i++;
 			}
 			if ($_POST["{$ifn}0"] <> "") {
-				if ($i > 0) {
+				if ($j > 0) {
 					$ifpathcost .= ",";
 				}
 				$ifpathcost .= $ifn.":".$_POST["{$ifn}0"];
+				$j++;
 			}
-			$i++;
 		}
 
 		$bridge['ifpriority'] = $ifpriority;
@@ -363,7 +369,7 @@ if ($_POST['save']) {
 				$a_bridges[] = $bridge;
 			}
 
-			write_config();
+			write_config("Bridge interface created");
 
 			$confif = convert_real_interface_to_friendly_interface_name($bridge['bridgeif']);
 			if ($confif <> "") {
@@ -383,7 +389,10 @@ function build_port_list($selecton) {
 	$portlist = array('list' => array(), 'selected' => array());
 
 	foreach ($ifacelist as $ifn => $ifdescr) {
-		if (substr($config['interfaces'][$ifn]['if'], 0, 6) != "bridge") {
+		/* Do not allow WireGuard interfaces to be used for bridges
+		 * https://redmine.pfsense.org/issues/11277 */
+		if ((substr($config['interfaces'][$ifn]['if'], 0, 6) != "bridge") &&
+		    (substr($config['interfaces'][$ifn]['if'], 0, 2) != 'wg')) {
 			$portlist['list'][$ifn] = $ifdescr;
 
 			if (in_array($ifn, explode(',', $selecton))) {

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2013 Dagorlad
  * All rights reserved.
  *
@@ -287,7 +287,7 @@ $section->addInput(new Form_Checkbox(
 	'Enable',
 	'Enable NTP Server',
 	($pconfig['enable'] == 'enabled')
-))->setHelp('You may need to disable NTP if pfSense is running in a virtual machine and the host is responsible for the clock.');
+))->setHelp('You may need to disable NTP if %1$s is running in a virtual machine and the host is responsible for the clock.', $g['product_label']);
 
 $iflist = build_interface_list();
 

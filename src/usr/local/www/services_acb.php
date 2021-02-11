@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2008-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,7 +84,7 @@ if ($_REQUEST['rmver'] != "") {
 	curl_setopt($curl_session, CURLOPT_POST, 3);
 	curl_setopt($curl_session, CURLOPT_SSL_VERIFYPEER, 1);
 	curl_setopt($curl_session, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($curl_session, CURLOPT_USERAGENT, $g['product_name'] . '/' . rtrim(file_get_contents("/etc/version")));
+	curl_setopt($curl_session, CURLOPT_USERAGENT, $g['product_label'] . '/' . rtrim(file_get_contents("/etc/version")));
 	// Proxy
 	curl_setopt_array($curl_session, configure_proxy());
 
@@ -116,7 +116,7 @@ if ($_REQUEST['newver'] != "") {
 	curl_setopt($curl_session, CURLOPT_POST, 3);
 	curl_setopt($curl_session, CURLOPT_SSL_VERIFYPEER, 1);
 	curl_setopt($curl_session, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($curl_session, CURLOPT_USERAGENT, $g['product_name'] . '/' . rtrim(file_get_contents("/etc/version")));
+	curl_setopt($curl_session, CURLOPT_USERAGENT, $g['product_label'] . '/' . rtrim(file_get_contents("/etc/version")));
 	// Proxy
 	curl_setopt_array($curl_session, configure_proxy());
 	$data = curl_exec($curl_session);
@@ -190,7 +190,7 @@ if ($_REQUEST['download']) {
 	curl_setopt($curl_session, CURLOPT_SSL_VERIFYPEER, 1);
 	curl_setopt($curl_session, CURLOPT_RETURNTRANSFER, 1);
 
-	curl_setopt($curl_session, CURLOPT_USERAGENT, $g['product_name'] . '/' . rtrim(file_get_contents("/etc/version")));
+	curl_setopt($curl_session, CURLOPT_USERAGENT, $g['product_label'] . '/' . rtrim(file_get_contents("/etc/version")));
 	// Proxy
 	curl_setopt_array($curl_session, configure_proxy());
 	$data = curl_exec($curl_session);
@@ -231,7 +231,7 @@ if ( !($_REQUEST['download']) || $input_errors) {
 	curl_setopt($curl_session, CURLOPT_POST, 1);
 	curl_setopt($curl_session, CURLOPT_RETURNTRANSFER, 1);
 
-	curl_setopt($curl_session, CURLOPT_USERAGENT, $g['product_name'] . '/' . rtrim(file_get_contents("/etc/version")));
+	curl_setopt($curl_session, CURLOPT_USERAGENT, $g['product_label'] . '/' . rtrim(file_get_contents("/etc/version")));
 	// Proxy
 	curl_setopt_array($curl_session, configure_proxy());
 

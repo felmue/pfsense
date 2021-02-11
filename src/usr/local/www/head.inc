@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,10 @@ if (!isset($config['system']['webgui']['dashboardcolumns'])) {
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
-	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="apple-touch-icon-precomposed" href="/apple-touch/apple-touch-icon-iphone-60x60-precomposed.png">
+	<link rel="apple-touch-icon-precomposed" sizes="60x60" href="/apple-touch/apple-touch-icon-ipad-76x76-precomposed.png">
+	<link rel="apple-touch-icon-precomposed" sizes="114x114" href="/apple-touch/apple-touch-icon-iphone-retina-120x120-precomposed.png">
+	<link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch/apple-touch-icon-ipad-retina-152x152-precomposed.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 	<link rel="manifest" href="/manifest.json">
@@ -344,6 +347,7 @@ $vpn_menu[] = array(gettext("IPsec"), "/vpn_ipsec.php");
 $vpn_menu[] = array(gettext("OpenVPN"), "/vpn_openvpn_server.php");
 //$vpn_menu[] = array(gettext("PPTP"), "/vpn_pptp.php");
 $vpn_menu[] = array(gettext("L2TP"), "/vpn_l2tp.php");
+$vpn_menu[] = array(gettext("WireGuard"), "/vpn_wg.php");
 $vpn_menu = msort(array_merge($vpn_menu, return_ext_menu("VPN")), 0);
 
 // Status
@@ -686,7 +690,7 @@ if (file_exists('/conf/needs_package_sync') && platform_booting()) {
 	$warning_text = sprintf(gettext(
 	    '%1$s%3$s is booting, then packages will be reinstalled in the ' .
 	    'background.%2$s%1$sDo not make changes in the GUI until this is ' .
-	    'complete.%2$s'), '<p>', '</p>', $g['product_name']);
+	    'complete.%2$s'), '<p>', '</p>', $g['product_label']);
 } elseif (is_subsystem_dirty('packagelock')) {
 	$pgtitle = array(gettext("System"), gettext("Package Manager"));
 	$warning_text = sprintf(gettext('%1$sPackages are currently being ' .

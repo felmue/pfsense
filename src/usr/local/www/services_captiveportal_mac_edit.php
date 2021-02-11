@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2004 Dinesh Nair <dinesh@alphaque.com>
  * All rights reserved.
  *
@@ -162,7 +162,7 @@ if ($_POST['save']) {
 		}
 		passthrumacs_sort();
 
-		write_config();
+		write_config("Captive portal passthrough MAC added");
 
 		if (isset($config['captiveportal'][$cpzone]['enable'])) {
 			$cpzoneid = $config['captiveportal'][$cpzone]['zoneid'];

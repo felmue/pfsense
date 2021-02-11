@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -1315,7 +1315,11 @@ class priq_queue {
 		$this->qlimit = $limit;
 	}
 	function GetQpriority() {
-		return $this->qpriority;
+		if (is_numeric($this->qpriority)) {
+			return $this->qpriority;
+		} else {
+			return '1';
+		}
 	}
 	function SetQpriority($priority) {
 		$this->qpriority = $priority;
@@ -1553,10 +1557,12 @@ class priq_queue {
 	function find_parentqueue($interface, $qname) { return; }
 
 	function validate_input($data, &$input_errors) {
+		global $altq_list_queues;
 
 		$reqdfields[] = "name";
 		$reqdfieldsn[] = gettext("Name");
 		shaper_do_input_validation($data, $reqdfields, $reqdfieldsn, $input_errors);
+		$parent = $altq_list_queues[$this->GetInterface()];
 
 		if ($data['bandwidth'] && !is_numeric($data['bandwidth'])) {
 			$input_errors[] = gettext("Bandwidth must be an integer.");
@@ -1572,10 +1578,28 @@ class priq_queue {
 		if ($this->CheckBandwidth($data['bandwidth'], $data['bandwidthtype']))
 			$input_errors[] = "The sum of child bandwidth is higher than parent.";
 
-		if (isset($data['priority']) && (!is_numeric($data['priority']) ||
-		    ($data['priority'] < 0) || ($data['priority'] > 15))) {
-			$input_errors[] = gettext("The priority must be an integer between 0 and 15.");
+		if ($parent) {
+			if (($parent->GetScheduler() == 'PRIQ') && (!is_numeric($data['priority']) ||
+			    ($data['priority'] < 0) || ($data['priority'] > 15))) {
+				$input_errors[] = gettext("The priority must be an integer between 0 and 15.");
+			} elseif (in_array($parent->GetScheduler(), array('FAIRQ','CBQ')) && (!is_numeric($data['priority']) ||
+			    ($data['priority'] < 0) || ($data['priority'] > 7))) {
+				$input_errors[] = gettext("The priority must be an integer between 0 and 7.");
+			}
+			if (is_array($parent->queues)) {
+				foreach ($parent->queues as $q) {
+					if (($data['newname'] == $q->GetQname()) && ($data['name'] != $data['newname'])) { 
+						$input_errors[] = gettext("A queue with the same name already exists.");
+					}
+					if (in_array($parent->GetScheduler(), array('FAIRQ','PRIQ')) &&
+					    ($data['priority'] == $q->GetQpriority()) && ($data['name'] != $q->GetQname())) { 
+						$input_errors[] = sprintf(gettext("The priority %d is already used by queue %s."),
+								$data['priority'], $q->GetQname());
+					}
+				}
+			}
 		}
+
 		if ($data['qlimit'] && (!is_numeric($data['qlimit']))) {
 				$input_errors[] = gettext("Queue limit must be an integer");
 		}
@@ -1591,20 +1615,6 @@ class priq_queue {
 		$default = $this->GetDefault();
 		if (!empty($data['default']) && altq_get_default_queue($data['interface']) && empty($default)) {
 			$input_errors[] = gettext("Only one default queue per interface is allowed.");
-		}
-
-		$parent = $this->GetParent();
-		if (is_array($parent->queues)) {
-			foreach ($parent->queues as $q) {
-				if (($data['newname'] == $q->GetQname()) && ($data['name'] != $data['newname'])) { 
-					$input_errors[] = gettext("A queue with the same name already exists.");
-				}
-				if (in_array($parent->GetScheduler(), array('CBQ', 'FAIRQ','PRIQ')) &&
-				    ($data['priority'] == $q->GetQpriority()) && ($data['name'] != $q->GetQname())) { 
-					$input_errors[] = sprintf(gettext("The priority %d is already used by queue %s."),
-							$data['priority'], $q->GetQname());
-				}
-			}
 		}
 	}
 
@@ -3020,15 +3030,22 @@ class cbq_queue extends priq_queue {
 	function validate_input($data, &$input_errors) {
 		parent::validate_input($data, $input_errors);
 
-		if ($data['priority'] > 7) {
-				$input_errors[] = gettext("Priority must be an integer between 0 and 7.");
-		}
 		$reqdfields[] = "bandwidth";
 		$reqdfieldsn[] = gettext("Bandwidth");
 		$reqdfields[] = "bandwidthtype";
 		$reqdfieldsn[] = gettext("Bandwidthtype");
 
 		shaper_do_input_validation($data, $reqdfields, $reqdfieldsn, $input_errors);
+
+		if ($data['priority'] > 7) {
+			$input_errors[] = gettext("Priority must be an integer between 0 and 7.");
+		}
+
+		$parent = $this->GetParent();
+		if (method_exists($parent, 'GetParent') && ($parent->GetBorrow() != "on") &&
+		    ($data['borrow'] == 'yes')) {
+			$input_errors[] = gettext("You cannot set 'Borrow' if the parent queue also does not borrow.");
+		}
 	}
 
 	function ReadConfig(&$q) {
@@ -5346,7 +5363,7 @@ function build_iface_without_this_queue($iface, $qname) {
 
 }
 
-$default_shaper_msg = sprintf(gettext("Welcome to the %s Traffic Shaper."), $g['product_name']) . "<br />";
+$default_shaper_msg = sprintf(gettext("Welcome to the %s Traffic Shaper."), $g['product_label']) . "<br />";
 $dn_default_shaper_msg = $default_shaper_msg;
 
 $shaper_msg = gettext("The tree on the left navigates through the %s.");

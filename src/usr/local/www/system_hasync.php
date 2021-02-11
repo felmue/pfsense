@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,10 +72,12 @@ if ($_POST) {
 		$input_errors[] = gettext("Password and confirmation must match.");
 	}
 
-	if ($pconfig['pfsyncpeerip'] != "") {
-		if (!is_ipaddrv4($pconfig['pfsyncpeerip'])) {
-			$input_errors[] = gettext("pfsync Synchronize Peer IP must be an IPv4 IP.");
-		}
+	if (!empty($pconfig['pfsyncpeerip']) && !is_ipaddrv4($pconfig['pfsyncpeerip'])) {
+		$input_errors[] = gettext("pfsync Synchronize Peer IP must be an IPv4 IP.");
+	}
+
+	if (!empty($pconfig['synchronizetoip']) && !is_ipaddr($pconfig['synchronizetoip'])) {
+		$input_errors[] = gettext("Synchronize Config to IP must be a valid IP address.");
 	}
 
 	if (!$input_errors) {

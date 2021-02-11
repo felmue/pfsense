@@ -3,7 +3,7 @@
  *
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2016 Electric Sheep Fencing
- * Copyright (c) 2016-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2016-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -368,6 +368,11 @@ tr.disabled a {
 
 .help-block {
     margin-bottom: 0;
+}
+
+.help-block-underlined {
+    margin-bottom: 0;
+    text-decoration: underline;
 }
 
 .action-buttons {
@@ -1055,4 +1060,8 @@ can then be used to style required input here. Example below uses a custom
 text underline, but text-color, background, font etc. could also be used */
 .element-required {
     box-shadow: inset 0 0px 0 white, inset 0 -1px 0 black
+}
+
+.peerbg_color {
+    background-color: #ccf2ff;"
 }

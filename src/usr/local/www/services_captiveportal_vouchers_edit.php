@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2007 Marcel Wiget <mwiget@mac.com>
  * All rights reserved.
  *
@@ -159,7 +159,7 @@ if ($_POST['save']) {
 			$a_roll[] = $rollent;
 		}
 
-		write_config();
+		write_config("Captive portal vouchers edited");
 
 		header("Location: services_captiveportal_vouchers.php?zone={$cpzone}");
 		exit;

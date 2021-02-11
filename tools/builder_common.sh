@@ -5,7 +5,7 @@
 # part of pfSense (https://www.pfsense.org)
 # Copyright (c) 2004-2013 BSD Perimeter
 # Copyright (c) 2013-2016 Electric Sheep Fencing
-# Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+# Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
 # All rights reserved.
 #
 # FreeSBIE portions of the code
@@ -1833,7 +1833,8 @@ poudriere_bulk() {
 
 	_makeconf=/usr/local/etc/poudriere.d/${POUDRIERE_PORTS_NAME}-make.conf
 	if [ -f "${BUILDER_TOOLS}/conf/pfPorts/make.conf" ]; then
-		cp -f "${BUILDER_TOOLS}/conf/pfPorts/make.conf" ${_makeconf}
+		sed -e "s,%%PRODUCT_NAME%%,${PRODUCT_NAME},g" \
+		    "${BUILDER_TOOLS}/conf/pfPorts/make.conf" > ${_makeconf}
 	fi
 
 	cat <<EOF >>/usr/local/etc/poudriere.d/${POUDRIERE_PORTS_NAME}-make.conf

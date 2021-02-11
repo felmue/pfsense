@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,7 +93,7 @@ if ($_POST['act'] == "del" && !empty($cpzone)) {
 		}
 
 		unset($a_allowedhostnames[$_POST['id']]);
-		write_config();
+		write_config("Captive portal allowed hostnames saved");
 		captiveportal_allowedhostname_configure();
 		header("Location: services_captiveportal_hostname.php?zone={$cpzone}");
 		exit;

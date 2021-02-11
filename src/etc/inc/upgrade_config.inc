@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -633,7 +633,7 @@ function upgrade_039_to_040() {
 		$config['system']['user'][0]['priv'][2]['descr'] = gettext("Indicates whether this user is able to login for example via SSH.");
 		$config['system']['user'][0]['priv'][3]['id'] = "copyfiles";
 		$config['system']['user'][0]['priv'][3]['name'] = "Is allowed to copy files";
-		$config['system']['user'][0]['priv'][3]['descr'] = sprintf(gettext("Indicates whether this user is allowed to copy files onto the %s appliance via SCP/SFTP."), $g['product_name']);
+		$config['system']['user'][0]['priv'][3]['descr'] = sprintf(gettext("Indicates whether this user is allowed to copy files onto the %s appliance via SCP/SFTP."), $g['product_label']);
 		$config['system']['user'][0]['priv'][4]['id'] = "isroot";
 		$config['system']['user'][0]['priv'][4]['name'] = "Is root user";
 		$config['system']['user'][0]['priv'][4]['descr'] = gettext("This user is associated with the UNIX root user (this privilege should only be associated with one single user).");
@@ -6097,43 +6097,9 @@ function upgrade_198_to_199() {
 	}
 }
 
-/* Update IPsec reauth and rekey variable names and values based on existing settings
- * https://redmine.pfsense.org/issues/9983
- */
+/* Superceded. See https://redmine.pfsense.org/issues/11219 and upgrade_212_to_213() */
 function upgrade_199_to_200() {
 	global $config;
-	init_config_arr(array('ipsec', 'phase1'));
-	foreach ($config['ipsec']['phase1'] as & $ph1ent) {
-		if (empty($ph1ent)) {
-			continue;
-		}
-		/* Convert lifetime to reauth_time since that's how previous
-		 * versions behaved. */
-		if (isset($ph1ent['reauth_enable'])) {
-			$ph1ent['reauth_time'] = "0";
-			/* If reauth is disabled, set hard P1 lifetime  limit */
-			$ph1ent['over_time'] = $ph1ent['lifetime'];
-		} else {
-			/* Reauth at 90% of requested lifetime, set hard limit at full (relative) lifetime */
-			$ph1ent['reauth_time'] = (int)($ph1ent['lifetime'] * 0.90);
-			$ph1ent['over_time'] = (int)($ph1ent['lifetime'] * 0.10);
-		}
-		/* Auto or IKEv2, rekey items */
-		if (($ph1ent['iketype'] == 'ikev2') || ($ph1ent['iketype'] == 'auto')) {
-			if (isset($ph1ent['rekey_enable'])) {
-				/* Disable rekey */
-				$ph1ent['rekey_time'] = "0";
-				$ph1ent['reauth_time'] = "0";
-				/* If rekey is disabled, set hard P1 lifetime limit */
-				$ph1ent['over_time'] = $ph1ent['lifetime'];
-			} elseif (!empty($ph1ent['margintime'])) {
-				/* If margintime is set, use that to calculate over_time and reauth_time */
-				$ph1ent['reauth_time'] = ($ph1ent['lifetime'] - $ph1ent['margintime']);
-				$ph1ent['over_time'] = $ph1ent['margintime'];
-			}
-		}
-		unset($ph1ent['lifetime'], $ph1ent['reauth_enable'], $ph1ent['rekey_enable'], $ph1ent['margintime']);
-	}
 }
 
 /* Update LDAP transport values */
@@ -6306,6 +6272,105 @@ function upgrade_209_to_210() {
 		$config['system']['dnslocalhost'] = 'remote';
 	}
 }
+
+/* OpenVPN Data Cipher changes
+ * https://redmine.pfsense.org/issues/10919 */
+function upgrade_210_to_211() {
+	global $config;
+	init_config_arr(array('openvpn', 'openvpn-server'));
+	init_config_arr(array('openvpn', 'openvpn-client'));
+	foreach(array('server', 'client') as $mode) {
+		foreach ($config['openvpn']["openvpn-{$mode}"] as & $settings) {
+			/* Rename ncp-ciphers to data_ciphers */
+			if (!empty($settings['ncp-ciphers'])) {
+				$settings['data_ciphers'] = $settings['ncp-ciphers'];
+			} elseif ($settings['crypto'] == 'none') {
+				$settings['data_ciphers'] = 'none';
+			} else {
+				$settings['data_ciphers'] = 'AES-256-GCM,AES-128-GCM,CHACHA20-POLY1305';
+			}
+			if (isset($settings['ncp-ciphers'])) {
+				unset($settings['ncp-ciphers']);
+			}
+			/* Add crypto to data_ciphers */
+			if (!empty($settings['crypto']) &&
+			    ($settings['crypto'] != 'none') &&
+			    !in_array($settings['crypto'], explode(',', $settings['data_ciphers']))) {
+				$settings['data_ciphers'] .= ',' . $settings['crypto'];
+			}
+			/* Rename crypto to data_ciphers_fallback */
+			if (isset($settings['crypto'])) {
+				$settings['data_ciphers_fallback'] = $settings['crypto'];
+				unset($settings['crypto']);
+			}
+			/* Forcefully enable data cipher negotiation since
+			 * disabling negotiation is now deprecated */
+			$settings['ncp_enable'] = "enabled";
+		}
+	}
+}
+
+function upgrade_211_to_212() {
+	global $config;
+	if (isset($config['unbound']['sslport'])) {
+		$config['unbound']['tlsport'] = $config['unbound']['sslport'];
+		unset($config['unbound']['sslport']);
+	}
+}
+
+/* IPsec Expiration and Replacement values which need updated for swanctl format
+ * https://redmine.pfsense.org/issues/11219
+ * https://redmine.pfsense.org/issues/9983
+ */
+function upgrade_212_to_213() {
+	global $config;
+	init_config_arr(array('ipsec', 'phase1'));
+	foreach ($config['ipsec']['phase1'] as & $ph1ent) {
+		if (empty($ph1ent)) {
+			continue;
+		}
+
+		if (isset($ph1ent['reauth_enable'])) {
+			/* Disable reauth */
+			$ph1ent['reauth_time'] = "0";
+		} elseif (!empty($ph1ent['margintime'])) {
+			/* If margintime is set, use that to calculte reauth_time */
+			$ph1ent['reauth_time'] = ($ph1ent['lifetime'] - $ph1ent['margintime']);
+		}
+		/* Auto or IKEv2, rekey items */
+		if (($ph1ent['iketype'] == 'ikev2') || ($ph1ent['iketype'] == 'auto')) {
+			if (isset($ph1ent['rekey_enable'])) {
+				/* Disable rekey */
+				$ph1ent['rekey_time'] = "0";
+				$ph1ent['reauth_time'] = "0";
+			} elseif (!empty($ph1ent['margintime'])) {
+				/* If margintime is set, use that to calculate rekey_time */
+				$ph1ent['rekey_time'] = ($ph1ent['lifetime'] - $ph1ent['margintime']);
+			}
+		}
+
+		if (!empty($ph1ent['margintime'])) {
+			$ph1ent['rand_time'] = $ph1ent['margintime'];
+		}
+
+		/* Older snaps had over_time, now need lifetime back. */
+		if (!empty($ph1ent['over_time']) && empty($ph1ent['lifetime'])) {
+			$ph1ent['lifetime'] = $ph1ent['over_time'] + max($ph1ent['rekey_time'], $ph1ent['reauth_time']);
+		}
+
+		unset($ph1ent['reauth_enable'], $ph1ent['rekey_enable'], $ph1ent['margintime'], $ph1ent['over_time']);
+	}
+}
+
+/* VXLAN support was removed */
+function upgrade_213_to_214() {
+	global $config;
+
+	if (isset($config['vxlans'])) {
+		unset($config['vxlans']);
+	}
+}
+
 /*
  * Special function that is called independent of current config version. It's
  * a workaround to have config_upgrade running on older versions after next

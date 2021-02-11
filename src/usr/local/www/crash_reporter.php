@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -97,7 +97,7 @@ if ($_POST['Submit'] == "No") {
 	<div class="panel-body">
 		<div class="content">
 			<p>
-				<?=gettext("Debugging output can be collected to share with pfSense developers or others providing support or assistance.")?>
+				<?=sprintf(gettext("Debugging output can be collected to share with %s developers or others providing support or assistance."), $g['product_label'])?>
 				<br/><br/>
 				<i><?=gettext("Inspect the contents to ensure this information is acceptable to disclose before distributing these files.")?></i>
 			</p>

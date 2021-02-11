@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2013 Dagorlad
  * All rights reserved.
  *
@@ -396,8 +396,8 @@ $section->addInput(new Form_Select(
 	$pconfig['type'],
 	array_combine($gpstypes, $gpstypes)
 ))->setHelp('This option allows a predefined configuration to be selected. ' .
-			'Default is the configuration of pfSense 2.1 and earlier (not recommended). Select Generic if the GPS is not listed.%1$s' .
-			'The predefined configurations assume the GPS has already been set to NMEA mode.', '<br /><br />');
+    'Default is the configuration of %1$s 2.1 and earlier (not recommended). Select Generic if the GPS is not listed.%2$s' .
+    'The predefined configurations assume the GPS has already been set to NMEA mode.', $g['product_label'], '<br /><br />');
 
 $serialports = glob("/dev/cua?[0-9]{,.[0-9]}", GLOB_BRACE);
 

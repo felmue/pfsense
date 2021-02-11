@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,7 +116,7 @@ if ($_POST && !$input_errors) {
 		eval($pkg['step'][$stepid]['stepsubmitphpaction']);
 	}
 	if (!$input_errors) {
-		write_config(gettext("Configuration changed via the pfSense wizard subsystem."));
+		write_config(gettext("Configuration changed via the wizard subsystem."));
 	}
 
 	$stepid++;
@@ -183,6 +183,12 @@ function update_config_field($field, $updatetext, $unset, $arraynum, $field_type
 		eval($text);
 		$thisvar = $updatetext;
 		return;
+	}
+
+	if ($field_type == "select") {
+		if (is_array($updatetext)) {
+			$updatetext = implode(',', $updatetext);
+		}
 	}
 
 	if ($unset == "yes") {
@@ -767,6 +773,12 @@ if ($pkg['step'][$stepid]['fields']['field'] != "") {
 
 				$multiple = ($field['multiple'] == "yes");
 
+				if ($multiple) {
+					$values = explode(',', $value);
+				} else {
+					$values = array($value);
+				}
+
 				$onchange = "";
 				foreach ($field['options']['option'] as $opt) {
 					if ($opt['enablefields'] != "") {
@@ -778,8 +790,8 @@ if ($pkg['step'][$stepid]['fields']['field'] != "") {
 				$selected = array();
 
 				foreach ($field['options']['option'] as $opt) {
-					if ($value == $opt['value']) {
-						array_push($selected, $value);
+					if (in_array($opt['value'], $values)) {
+						array_push($selected, $opt['value']);
 					}
 
 					if ($opt['displayname']) {

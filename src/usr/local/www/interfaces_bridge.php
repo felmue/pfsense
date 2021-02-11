@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,7 @@ if ($_POST['act'] == "del") {
 
 		unset($a_bridges[$_POST['id']]);
 
-		write_config();
+		write_config("Bridge deleted");
 
 		header("Location: interfaces_bridge.php");
 		exit;
@@ -87,7 +87,6 @@ $tab_array[] = array(gettext("QinQs"), false, "interfaces_qinq.php");
 $tab_array[] = array(gettext("PPPs"), false, "interfaces_ppps.php");
 $tab_array[] = array(gettext("GREs"), false, "interfaces_gre.php");
 $tab_array[] = array(gettext("GIFs"), false, "interfaces_gif.php");
-$tab_array[] = array(gettext("VXLANs"), false, "interfaces_vxlan.php");
 $tab_array[] = array(gettext("Bridges"), true, "interfaces_bridge.php");
 $tab_array[] = array(gettext("LAGGs"), false, "interfaces_lagg.php");
 display_top_tabs($tab_array);

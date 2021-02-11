@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,13 +64,15 @@ $g = array(
 	"xml_rootobj" => "pfsense",
 	"admin_group" => "admins",
 	"product_name" => "pfSense",
+	"product_label" => "pfSense",
+	"product_label_html" => "Netgate pfSense<sup>&#174;</sup>",
 	"product_version" => trim(file_get_contents("/etc/version"), " \n"),
 	"product_copyright_years" => "2004 - ".date("Y"),
 	"disablehelpmenu" => false,
 	"disablehelpicon" => false,
 	"disablecrashreporter" => false,
 	"debug" => false,
-	"latest_config" => "21.0",
+	"latest_config" => "21.4",
 	"minimum_ram_warning" => "101",
 	"minimum_ram_warning_text" => "128 MB",
 	"wan_interface_name" => "wan",
@@ -95,7 +97,8 @@ $g = array(
 		'dhcpd' => "/var/dhcpd/var/db/dhcpd.leases",
 		'dhcpdv6' => "/var/dhcpd/var/db/dhcpd6.leases",
 		'voucher' => "/var/db/voucher_*.db"
-	)
+	),
+	"wg_conf_path" => "/etc/wg"
 );
 
 /* IP TOS flags */
@@ -114,9 +117,6 @@ $g['product_version_string'] = $g['product_version'];
 if (is_numeric($g["product_version_patch"]) && $g["product_version_patch"] != "0") {
 	$g['product_version_string'] .= "-p{$g['product_version_patch']}";
 }
-
-/* XXX: Backward compatible */
-$g['platform'] = $g['product_name'];
 
 if (file_exists("{$g['etc_path']}/default-config-flavor")) {
 	$flavor_array = file("{$g['etc_path']}/default-config-flavor");
@@ -161,10 +161,6 @@ $sysctls = array("net.inet.ip.portrange.first" => "1024",
 	"net.inet.udp.checksum" => 1,
 	"net.inet.icmp.reply_from_interface" => 1,
 	"net.inet6.ip6.rfc6204w3" => 1,
-	"net.enc.out.ipsec_bpf_mask" => "0x0001",
-	"net.enc.out.ipsec_filter_mask" => "0x0001",
-	"net.enc.in.ipsec_bpf_mask" => "0x0002",
-	"net.enc.in.ipsec_filter_mask" => "0x0002",
 	"net.key.preferred_oldsa" => "0",
 	"net.inet.carp.senderr_demotion_factor" => 0, /* Do not demote CARP for interface send errors */
 	"net.pfsync.carp_demotion_factor" => 0, /* Do not demote CARP for pfsync errors */
@@ -309,7 +305,7 @@ $system_log_compression_types = array(
 		),
 	'none' => array(
 			'flag' => '',
-			'cat' => '/usr/bin/cat',
+			'cat' => '/bin/cat',
 			'ext' => '',
 		),
 );
@@ -322,5 +318,31 @@ $ddnsdomainkeyalgorithms = array(
 		'hmac-sha256' => 'HMAC-SHA256 (current bind9 default)',
 		'hmac-sha384' => 'HMAC-SHA384',
 		'hmac-sha512' => 'HMAC-SHA512 (most secure)');
+
+global $ipsec_filtermodes;
+$ipsec_filtermodes = array(
+	'enc' => 'Filter IPsec Tunnel and VTI on IPsec tab (enc0)',
+	'if_ipsec' => 'Filter IPsec VTI on assigned interfaces, block all tunnel mode traffic'
+);
+
+global $ipsec_filter_sysctl;
+$ipsec_filter_sysctl = array(
+	'enc' => array(
+		"net.inet.ipsec.filtertunnel"   => "0x0000",
+		"net.inet6.ipsec6.filtertunnel" => "0x0000",
+		"net.enc.out.ipsec_bpf_mask"    => "0x0001",
+		"net.enc.out.ipsec_filter_mask" => "0x0001",
+		"net.enc.in.ipsec_bpf_mask"     => "0x0002",
+		"net.enc.in.ipsec_filter_mask"  => "0x0002"
+	),
+	'if_ipsec' => array(
+		"net.inet.ipsec.filtertunnel"   => "0x0001",
+		"net.inet6.ipsec6.filtertunnel" => "0x0001",
+		"net.enc.out.ipsec_bpf_mask"    => "0x0000",
+		"net.enc.out.ipsec_filter_mask" => "0x0000",
+		"net.enc.in.ipsec_bpf_mask"     => "0x0000",
+		"net.enc.in.ipsec_filter_mask"  => "0x0000"
+	),
+);
 
 ?>

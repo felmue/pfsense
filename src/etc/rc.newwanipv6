@@ -6,7 +6,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2006-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Originally part of m0n0wall (http://m0n0.ch/wall)
@@ -43,7 +43,7 @@ function restart_packages() {
 	global $oldipv6, $curwanipv6, $g;
 
 	/* restart packages */
-	log_error("{$g['product_name']} package system has detected an IP change or dynamic WAN reconnection - $oldipv6 -> $curwanipv6 - Restarting packages.");
+	log_error("{$g['product_label']} package system has detected an IP change or dynamic WAN reconnection - $oldipv6 -> $curwanipv6 - Restarting packages.");
 	send_event("service reload packages");
 }
 
@@ -54,7 +54,6 @@ if (isset($_GET['interface'])) {
 	$argument = trim($argv[1], " \n\t");
 }
 
-openlog("", LOG_PID, LOG_LOCAL0);
 log_error("rc.newwanipv6: Info: starting on {$argument}.");
 
 if (empty($argument)) {

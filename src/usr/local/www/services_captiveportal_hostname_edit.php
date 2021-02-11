@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,7 +129,7 @@ if ($_POST['save']) {
 
 		allowedhostnames_sort();
 
-		write_config();
+		write_config("Captive portal allowed hostnames added");
 
 		$rules = captiveportal_allowedhostname_configure();
 		@file_put_contents("{$g['tmp_path']}/hostname_rules", $rules);

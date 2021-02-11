@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally part of m0n0wall (http://m0n0.ch/wall)
@@ -559,17 +559,21 @@ update-conflict-detection false;
 
 EOD;
 
-	if (!isset($dhcpifconf['disableauthoritative'])) {
-		$dhcpdconf .= "authoritative;\n";
-	}
+	/* take these settings from the first DHCP configured interface,
+	 * see https://redmine.pfsense.org/issues/10270 
+	 * TODO: Global Settings tab, see https://redmine.pfsense.org/issues/5080 */
+	foreach ($dhcpdcfg as $dhcpif => $dhcpifconf) {
+		if (!isset($dhcpifconf['disableauthoritative'])) {
+			$dhcpdconf .= "authoritative;\n";
+		}
 
-	if (isset($dhcpifconf['alwaysbroadcast'])) {
-		$dhcpdconf .= "always-broadcast on\n";
-	}
+		if (isset($dhcpifconf['alwaysbroadcast'])) {
+			$dhcpdconf .= "always-broadcast on\n";
+		}
 
-	// OMAPI Settings
-	if (isset($dhcpifconf['omapi_port']) && is_numeric($dhcpifconf['omapi_port'])) {
-		$dhcpdconf .= <<<EOD
+		// OMAPI Settings
+		if (isset($dhcpifconf['omapi_port']) && is_numeric($dhcpifconf['omapi_port'])) {
+			$dhcpdconf .= <<<EOD
 
 key omapi_key {
   algorithm {$dhcpifconf['omapi_key_algorithm']};
@@ -579,6 +583,9 @@ omapi-port {$dhcpifconf['omapi_port']};
 omapi-key omapi_key;
 
 EOD;
+
+		}
+		break;
 	}
 
 	$dhcpdifs = array();
@@ -1185,10 +1192,10 @@ EOD;
 
 				if (isset($sm['ddnsupdate'])) {
 					if (($sm['ddnsdomain'] <> "") && ($sm['ddnsdomain'] != $dhcpifconf['ddnsdomain'])) {
-						$smdnscfg .= "		ddns-domainname \"{$sm['ddnsdomain']}\";\n";
+						$smdnscfg .= "	ddns-domainname \"{$sm['ddnsdomain']}\";\n";
 				 		$need_sm_ddns_updates = true;	
 					}
-					$smdnscfg .= "		ddns-update-style interim;\n";
+					$smdnscfg .= "	ddns-update-style interim;\n";
 				}
 
 				if (is_array($sm['dnsserver']) && ($sm['dnsserver'][0]) && ($sm['dnsserver'][0] != $dhcpifconf['dnsserver'][0])) {
@@ -1274,7 +1281,7 @@ EOD;
 						}
 					}
 					if (!$ddnsduplicate) {
-						$sm_newzone['dns-servers'] = array($sm['ddnsdomainprimary']);
+						$sm_newzone['dns-servers'] = array($sm['ddnsdomainprimary'], $sm['ddnsdomainsecondary']);
 						$sm_newzone['domain-name'] = $sm['ddnsdomain'];
 						$sm_newzone['ddnsdomainkeyname'] = $sm['ddnsdomainkeyname'];
 						$sm_newzone['ddnsdomainkeyalgorithm'] = $sm['ddnsdomainkeyalgorithm'];
@@ -1404,7 +1411,7 @@ function dhcpdzones($ddns_zones) {
 				$added_zones[] = $zone['domain-name'];
 			}
 			if ($zone['ptr-domain'] && !in_array($zone['ptr-domain'], $added_zones)) {
-				$dhcpdconf .= "zone {$zone['ptr-domain']} {\n";
+				$dhcpdconf .= "zone {$zone['ptr-domain']}. {\n";
 				if (is_ipaddrv4($primary)) {
 					$dhcpdconf .= "	primary {$primary};\n";
 				} else {
@@ -1515,11 +1522,12 @@ EOD;
 
 		$ifcfgv6 = $config['interfaces'][$dhcpv6if];
 
-		if (!isset($dhcpv6ifconf['enable']) || !isset($Iflist[$dhcpv6if]) || !isset($ifcfgv6['enable'])) {
+		if (!isset($dhcpv6ifconf['enable']) || !isset($Iflist[$dhcpv6if]) ||
+		    (!isset($ifcfgv6['enable']) && !preg_match("/poes/", $dhcpv6if))) {
 			continue;
 		}
 		$ifcfgipv6 = get_interface_ipv6($dhcpv6if);
-		if (!is_ipaddrv6($ifcfgipv6)) {
+		if (!is_ipaddrv6($ifcfgipv6) && !preg_match("/poes/", $dhcpv6if)) {
 			continue;
 		}
 		$ifcfgsnv6 = get_interface_subnetv6($dhcpv6if);
@@ -1740,7 +1748,9 @@ EOD;
 			$dhcpdv6conf .= dhcpdzones($ddns_zones);
 		}
 
-		if ($config['dhcpdv6'][$dhcpv6if]['ramode'] <> "unmanaged" && isset($config['interfaces'][$dhcpv6if]['enable'])) {
+		if (($config['dhcpdv6'][$dhcpv6if]['ramode'] != "unmanaged") &&
+		    (isset($config['interfaces'][$dhcpv6if]['enable']) ||
+		    preg_match("/poes/", $dhcpv6if))) {
 			if (preg_match("/poes/si", $dhcpv6if)) {
 				/* magic here */
 				$dhcpdv6ifs = array_merge($dhcpdv6ifs, get_pppoes_child_interfaces($dhcpv6if));
@@ -2568,8 +2578,8 @@ trap := "{$config['snmpd']['trapstring']}"
 EOD;
 		}
 
-		$sysDescr = "{$g['product_name']} {$config['system']['hostname']}.{$config['system']['domain']}" .
-			" {$g['product_version_string']} {$g['platform']} " . php_uname("s") .
+		$sysDescr = "{$g['product_label']} {$config['system']['hostname']}.{$config['system']['domain']}" .
+			" {$g['product_version_string']} " . php_uname("s") .
 			" " . php_uname("r") . " " . php_uname("m");
 
 		$snmpdconf .= <<<EOD

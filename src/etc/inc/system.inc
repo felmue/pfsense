@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally part of m0n0wall (http://m0n0.ch/wall)
@@ -102,7 +102,14 @@ function system_get_sysctls() {
 }
 
 function activate_sysctls() {
-	global $config, $g, $sysctls;
+	global $config, $g, $sysctls, $ipsec_filter_sysctl;
+
+	if (!is_array($sysctls)) {
+		$sysctls = array();
+	}
+
+	$ipsec_filtermode = empty($config['ipsec']['filtermode']) ? 'enc' : $config['ipsec']['filtermode'];
+	$sysctls = array_merge($sysctls, $ipsec_filter_sysctl[$ipsec_filtermode]);
 
 	if (is_array($config['sysctl']) && is_array($config['sysctl']['item'])) {
 		foreach ($config['sysctl']['item'] as $tunable) {
@@ -273,11 +280,11 @@ function get_dynamic_nameservers($iface = '') {
 	$master_list = array();
 
 	if (!empty($iface)) {
-		$iface = get_real_interface($iface);
+		$realif = get_real_interface($iface);
 	}
 
 	// Read in dynamic nameservers
-	$dns_lists = glob("/var/etc/nameserver_{$iface}*");
+	$dns_lists = array_merge(glob("/var/etc/nameserver_{$realif}*"), glob("/var/etc/nameserver_v6{$iface}*"));
 	if (is_array($dns_lists)) {
 		foreach ($dns_lists as $fdns) {
 			$contents = file($fdns, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -1072,7 +1079,7 @@ function system_webgui_create_certificate() {
 	$cert_hostname = "{$config['system']['hostname']}-{$cert['refid']}";
 
 	$dn = array(
-		'organizationName' => "{$g['product_name']} webConfigurator Self-Signed Certificate",
+		'organizationName' => "{$g['product_label']} webConfigurator Self-Signed Certificate",
 		'commonName' => $cert_hostname,
 		'subjectAltName' => "DNS:{$cert_hostname}");
 	$old_err_level = error_reporting(0); /* otherwise openssl_ functions throw warnings directly to a page screwing menu tab */
@@ -2531,6 +2538,7 @@ function system_identify_specific_platform() {
 			return (array('name' => 'SG-5100', 'descr' => 'Netgate SG-5100'));
 			break;
 		case 'Minnowboard Turbot D0 PLATFORM':
+		case 'Minnowboard Turbot D0/D1 PLATFORM':
 			$result = array();
 			$result['name'] = 'Turbot Dual-E';
 			/* Detect specific model */
@@ -2625,7 +2633,7 @@ function system_identify_specific_platform() {
 	}
 	unset($dmesg_boot);
 
-	return array('name' => $g['platform'], 'descr' => $g['platform']);
+	return array('name' => $g['product_name'], 'descr' => $g['product_label']);
 }
 
 function system_get_dmesg_boot() {

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2005 Colin Smith
  * All rights reserved.
  *
@@ -246,7 +246,7 @@ if (file_exists("/usr/local/bin/git")) {
 		isset($gitcfg['dryrun'])
 		))->setHelp('Dry-run only.%1$sNo files copied.', '<br />');
 
-	$group->setHelp('See "playback gitsync --help" in console "PHP Shell + pfSense tools" for additional information.');
+	$group->setHelp('See "playback gitsync --help" in console "PHP Shell + %s tools" for additional information.', $g['product_label']);
 	$section->add($group);
 
 	$form->add($section);

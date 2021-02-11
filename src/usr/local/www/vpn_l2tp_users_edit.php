@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,20 +31,6 @@
 $pgtitle = array(gettext("VPN"), gettext("L2TP"), gettext("Users"), gettext("Edit"));
 $pglinks = array("", "vpn_l2tp.php", "vpn_l2tp_users.php", "@self");
 $shortcut_section = "l2tps";
-
-function l2tpusercmp($a, $b) {
-	return strcasecmp($a['name'], $b['name']);
-}
-
-function l2tp_users_sort() {
-	global $config;
-
-	if (!is_array($config['l2tp']['user'])) {
-		return;
-	}
-
-	usort($config['l2tp']['user'], "l2tpusercmp");
-}
 
 require_once("guiconfig.inc");
 require_once("pfsense-utils.inc");
@@ -126,7 +112,7 @@ if ($_POST['save']) {
 
 		write_config(gettext("Configured a L2TP VPN user."));
 
-		$retval = vpn_l2tp_updatesecret();
+		vpn_l2tp_updatesecret();
 
 		pfSenseHeader("vpn_l2tp_users.php");
 

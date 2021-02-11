@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,7 +67,7 @@ if ($_POST['act'] == "del") {
 		pfSense_interface_destroy($qinq['vlanif']);
 		unset($a_qinqs[$id]);
 
-		write_config();
+		write_config("QinQ interface deleted");
 
 		header("Location: interfaces_qinq.php");
 		exit;
@@ -91,7 +91,6 @@ $tab_array[] = array(gettext("QinQs"), true, "interfaces_qinq.php");
 $tab_array[] = array(gettext("PPPs"), false, "interfaces_ppps.php");
 $tab_array[] = array(gettext("GREs"), false, "interfaces_gre.php");
 $tab_array[] = array(gettext("GIFs"), false, "interfaces_gif.php");
-$tab_array[] = array(gettext("VXLANs"), false, "interfaces_vxlan.php");
 $tab_array[] = array(gettext("Bridges"), false, "interfaces_bridge.php");
 $tab_array[] = array(gettext("LAGGs"), false, "interfaces_lagg.php");
 display_top_tabs($tab_array);
@@ -154,7 +153,7 @@ endforeach;
 <div class="infoblock">
 	<?php print_info_box(sprintf(gettext('Not all drivers/NICs support 802.1Q QinQ tagging properly. %1$sOn cards that do not explicitly support it, ' .
 		'QinQ tagging will still work, but the reduced MTU may cause problems.%1$s' .
-		'See the %2$s handbook for information on supported cards.'), '<br />', $g['product_name']), 'info', false); ?>
+		'See the %2$s handbook for information on supported cards.'), '<br />', $g['product_label']), 'info', false); ?>
 </div>
 
 <?php

@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2008 Shrew Soft Inc
  * All rights reserved.
  *
@@ -159,6 +159,7 @@ if ($act == "edit") {
 			$pconfig['ldap_attr_group'] = $a_server[$id]['ldap_attr_group'];
 			$pconfig['ldap_attr_member'] = $a_server[$id]['ldap_attr_member'];
 			$pconfig['ldap_attr_groupobj'] = $a_server[$id]['ldap_attr_groupobj'];
+			$pconfig['ldap_pam_groupdn'] = $a_server[$id]['ldap_pam_groupdn'];
 			$pconfig['ldap_utf8'] = isset($a_server[$id]['ldap_utf8']);
 			$pconfig['ldap_nostrip_at'] = isset($a_server[$id]['ldap_nostrip_at']);
 			$pconfig['ldap_allow_unauthenticated'] = isset($a_server[$id]['ldap_allow_unauthenticated']);
@@ -291,6 +292,12 @@ if ($_POST['save']) {
 		}
 	}
 
+	if (($pconfig['type'] == 'ldap') && isset($config['system']['webgui']['shellauth']) &&
+	    ($config['system']['webgui']['authmode'] == $pconfig['name']) && empty($pconfig['ldap_pam_groupdn'])) {
+		$input_errors[] = gettext("Shell Authentication Group DN must be specified if " . 
+			"Shell Authentication is enabled for appliance.");
+	}
+
 	// https://redmine.pfsense.org/issues/4154
 	if ($pconfig['type'] == "radius") {
 		if (is_ipaddrv6($_POST['radius_host'])) {
@@ -327,6 +334,7 @@ if ($_POST['save']) {
 			$server['ldap_attr_member'] = $pconfig['ldap_attr_member'];
 
 			$server['ldap_attr_groupobj'] = empty($pconfig['ldap_attr_groupobj']) ? "posixGroup" : $pconfig['ldap_attr_groupobj'];
+			$server['ldap_pam_groupdn'] = $pconfig['ldap_pam_groupdn'];
 
 			if ($pconfig['ldap_utf8'] == "yes") {
 				$server['ldap_utf8'] = true;
@@ -408,7 +416,12 @@ if ($_POST['save']) {
 			$config['system']['authserver'][] = $server;
 		}
 
-		write_config();
+		if (isset($config['system']['webgui']['shellauth']) &&
+		    ($config['system']['webgui']['authmode'] == $pconfig['name'])) {
+			set_pam_auth();
+		}
+
+		write_config("Authentication Servers settings saved");
 
 		pfSenseHeader("system_authservers.php");
 	}
@@ -773,6 +786,15 @@ $section->addInput(new Form_Input(
 	['placeholder' => 'posixGroup']
 ))->setHelp('Object class used for groups in RFC2307 mode. '.
 	'Typically "posixGroup" or "group".');
+
+$section->addInput(new Form_Input(
+	'ldap_pam_groupdn',
+	'Shell Authentication Group DN',
+	'text',
+	$pconfig['ldap_pam_groupdn']
+))->setHelp('If LDAP server is used for shell authentication, user must be a member ' .
+	    'of this group and have a valid posixAccount attributes to be able to login.%s Example: CN=Remoteshellusers,CN=Users,DC=example,DC=com',
+	    '<br/>');
 
 $section->addInput(new Form_Checkbox(
 	'ldap_utf8',

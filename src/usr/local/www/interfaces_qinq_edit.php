@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +47,15 @@ foreach ($lagglist as $laggif => $lagg) {
 		if (isset($portlist[$lagm])) {
 			unset($portlist[$lagm]);
 		}
+	}
+}
+
+/* Do not allow WireGuard interfaces to be used for QinQ
+ * https://redmine.pfsense.org/issues/11277 */
+init_config_arr(array('wireguard', 'tunnel'));
+foreach ($config['wireguard']['tunnel'] as $tunnel) {
+	if (isset($portlist[$tunnel['name']])) {
+		unset($portlist[$tunnel['name']]);
 	}
 }
 
@@ -226,7 +235,7 @@ if ($_POST['save']) {
 			}
 		}
 
-		write_config();
+		write_config("QinQ interface added");
 
 		header("Location: interfaces_qinq.php");
 		exit;

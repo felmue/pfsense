@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2020 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2021 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2006 Daniel S. Haischt
  * All rights reserved.
  *
@@ -87,7 +87,7 @@ $a_gateways = &$config['gateways']['gateway_item'];
 $interfaces = get_configured_interface_with_descr();
 /* Interfaces which have addresses configured elsewhere and should not be
  * configured here. See https://redmine.pfsense.org/issues/8687 */
-$no_address_interfaces = array("ovpn", "ipsec", "gif", "gre");
+$no_address_interfaces = array("ovpn", "ipsec", "gif", "gre", "wg");
 $show_address_controls = true;
 $realifname = get_real_interface($if);
 foreach ($no_address_interfaces as $ifbl) {
@@ -482,7 +482,7 @@ if ($_POST['apply']) {
 		 */
 		if (!empty($vlan_redo)) {
 			foreach ($vlan_redo as $vlredo) {
-				interfaces_vlan_configure($vlredo);
+				interfaces_vlan_configure_mtu($vlredo);
 			}
 		}
 
@@ -575,8 +575,8 @@ if ($_POST['apply']) {
 		}
 
 		if ((strlen(trim($_POST['descr'])) > 25) && ((substr($realifname, 0, 4) == 'ovpn') ||
-		    (substr($realifname, 0, 5) == 'ipsec'))) {
-			$input_errors[] = gettext("The OpenVPN and VTI interface description must be less than 26 characters long.");
+		    (substr($realifname, 0, 5) == 'ipsec') || (substr($realifname, 0, 2) == 'wg'))) {
+			$input_errors[] = gettext("VTI, WireGuard, and OpenVPN interface descriptions must be less than 26 characters long.");
 		}
 
 		if ((strlen(trim($_POST['descr'])) > 22) && ((substr($realifname, 0, 3) == 'gif') ||
@@ -619,8 +619,17 @@ if ($_POST['apply']) {
 			    "then change the interface configuration.");
 		}
 	}
-	if (isset($config['dhcpdv6']) && isset($config['dhcpdv6'][$if]['enable']) && ($_POST['type6'] != "staticv6" && $_POST['type6'] != "track6")) {
-		$input_errors[] = gettext("The DHCP6 Server is active on this interface and it can be used only with a static IPv6 configuration. Please disable the DHCPv6 Server service on this interface first, then change the interface configuration.");
+	if (isset($config['dhcpdv6']) && ($_POST['type6'] != "staticv6" && $_POST['type6'] != "track6")) {
+		if (isset($config['dhcpdv6'][$if]['enable'])) {
+			$input_errors[] = gettext("The DHCP6 Server is active on this interface and it can be used only " .
+			    "with a static IPv6 configuration. Please disable the DHCPv6 Server service on this " .
+			    "interface first, then change the interface configuration.");
+		}
+		if (isset($config['dhcpdv6'][$if]['ramode']) && ($config['dhcpdv6'][$if]['ramode'] != "disabled")) {
+			$input_errors[] = gettext("The Router Advertisements Server is active on this interface and it can " .
+			    "be used only with a static IPv6 configuration. Please disable the Router Advertisements " .
+			    "Server service on this interface first, then change the interface configuration.");
+		}
 	}
 
 	switch (strtolower($_POST['type'])) {
@@ -1599,7 +1608,7 @@ if ($_POST['apply']) {
 			handle_wireless_post();
 		}
 
-		write_config();
+		write_config("Interfaces settings changed");
 
 		if ($_POST['gatewayip4']) {
 			save_gateway($gateway_settings4);
@@ -1818,15 +1827,17 @@ function check_wireless_mode() {
 // Find all possible media options for the interface
 $mediaopts_list = array();
 $intrealname = $config['interfaces'][$if]['if'];
-exec("/sbin/ifconfig -m $intrealname | grep \"media \"", $mediaopts);
-foreach ($mediaopts as $mediaopt) {
-	preg_match("/media (.*)/", $mediaopt, $matches);
-	if (preg_match("/(.*) mediaopt (.*)/", $matches[1], $matches1)) {
-		// there is media + mediaopt like "media 1000baseT mediaopt full-duplex"
-		array_push($mediaopts_list, $matches1[1] . " " . $matches1[2]);
-	} else {
-		// there is only media like "media 1000baseT"
-		array_push($mediaopts_list, $matches[1]);
+if (!is_pseudo_interface($intrealname, false)) {
+	exec("/sbin/ifconfig -m $intrealname | grep \"media \"", $mediaopts);
+	foreach ($mediaopts as $mediaopt) {
+		preg_match("/media (.*)/", $mediaopt, $matches);
+		if (preg_match("/(.*) mediaopt (.*)/", $matches[1], $matches1)) {
+			// there is media + mediaopt like "media 1000baseT mediaopt full-duplex"
+			array_push($mediaopts_list, $matches1[1] . " " . $matches1[2]);
+		} else {
+			// there is only media like "media 1000baseT"
+			array_push($mediaopts_list, $matches[1]);
+		}
 	}
 }
 
@@ -3462,6 +3473,7 @@ $section->addInput(new Form_Checkbox(
 	'yes'
 ))->setHelp('Blocks traffic from reserved IP addresses (but not RFC 1918) or not yet assigned by IANA. Bogons are prefixes that should ' .
 			'never appear in the Internet routing table, and so should not appear as the source address in any packets received.%1$s' .
+			'This option should only be used on external interfaces (WANs), it is not necessary on local interfaces and it can potentially block required local traffic.%1$s' .
 			'Note: The update frequency can be changed under System > Advanced, Firewall & NAT settings.', '<br />');
 
 $form->add($section);
